@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode x_extends="../knoxNpc_ShotDefault.xml">
+	<m_Name>knoxNpc_ShotShoulderL</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_Conditions x_name="0cee3750-13be-4d0f-ade3-ce56a98d44f1">
+		<m_Value>ShotShoulderL</m_Value>
+	</m_Conditions>
+</animNode>

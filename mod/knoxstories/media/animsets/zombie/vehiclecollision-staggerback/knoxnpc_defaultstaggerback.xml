@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>knoxNpc_defaultStaggerBack</m_Name>
+	<m_Looped>false</m_Looped>
+	<m_SpeedScale>0.5</m_SpeedScale>
+	<m_BlendTime>0.3</m_BlendTime>
+	<m_Conditions x_name="fdbb1530-127f-456b-90b6-52d7e81dcb8e">
+		<m_Name>hitDir</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>FRONT</m_Value>
+	</m_Conditions>
+	<m_Conditions x_name="b7f32003-3009-4a48-bdc9-254e36e74023">
+		<m_Name>hitforce</m_Name>
+		<m_Type>GTR</m_Type>
+		<m_Value>0.4</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>

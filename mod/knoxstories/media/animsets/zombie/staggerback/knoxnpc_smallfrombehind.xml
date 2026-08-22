@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode x_extends="knoxNpc_fromBehind.xml">
+	<m_Name>knoxNpc_smallFromBehind</m_Name>
+	<m_Conditions x_name="b7f32003-3009-4a48-bdc9-554e36e74053">
+		<m_Type>LESS</m_Type>
+	</m_Conditions>
+</animNode>

@@ -30,6 +30,18 @@ const SCENARIOS = [
   { file: 'scenario_npcs.lua', banner: 'RELOAD AGAIN: NPCS, SPAWNING AND DIALOGUE', reload: true },
 ];
 
+function findLuaFilesLike(dir, ext) {
+  const out = [];
+  (function walk(d) {
+    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith(ext)) out.push(p);
+    }
+  })(dir);
+  return out;
+}
+
 function findLuaFiles(dir) {
   const out = [];
   (function walk(d) {
@@ -47,6 +59,27 @@ const modFiles = findLuaFiles(MOD_LUA);
 // ---------------------------------------------------------------------------
 // Pass 1: syntax
 // ---------------------------------------------------------------------------
+
+// --- ANIMSET CHECK ---
+// The engine appears to read animsets from <mod>/media/animsets rather than the
+// versioned <mod>/42/media/animsets, so both are shipped. They must not drift.
+{
+  const modRoot = path.join(REPO, 'mod', 'knoxstories');
+  const a = path.join(modRoot, '42', 'media', 'animsets');
+  const b = path.join(modRoot, 'media', 'animsets');
+  const list = (d) => fs.existsSync(d)
+    ? findLuaFilesLike(d, '.xml').map((f) => path.relative(d, f).split(path.sep).join('/')).sort()
+    : [];
+  const av = list(a), bv = list(b);
+  console.log('=== ANIMSETS ===');
+  console.log('  versioned     ' + av.length);
+  console.log('  non-versioned ' + bv.length);
+  if (av.length === 0 || bv.length === 0 || JSON.stringify(av) !== JSON.stringify(bv)) {
+    console.error('  FAIL: the two animset trees differ, or one is missing');
+    process.exit(1);
+  }
+  console.log('  OK   both trees identical');
+}
 
 console.log('=== SYNTAX (Lua 5.1) ===');
 let syntaxErrors = 0;
