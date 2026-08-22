@@ -1,0 +1,13 @@
+{
+  "name": "knoxstories-luatest",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Runs the mod's Lua against stubbed Project Zomboid globals",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "dependencies": {
+    "fengari": "^0.1.5",
+    "luaparse": "^0.3.1"
+  }
+}
