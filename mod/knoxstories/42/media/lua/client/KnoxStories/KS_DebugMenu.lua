@@ -28,6 +28,13 @@ local function onSpawnMaterials(player)
     KS.print("spawned a pen and two sheets of paper")
 end
 
+-- Dummy C's acquire_item step wants a screwdriver, and hunting one down is not
+-- what that test is about.
+local function onSpawnTriggerItems(player)
+    player:getInventory():AddItem("Base.Screwdriver")
+    KS.print("spawned a screwdriver")
+end
+
 local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, test)
     if not KS.DEBUG then
         return
@@ -47,6 +54,7 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, te
     context:addSubMenu(parent, submenu)
 
     submenu:addOption("Spawn pen + paper", player, onSpawnMaterials)
+    submenu:addOption("Spawn screwdriver", player, onSpawnTriggerItems)
 
     local defs = KS.Notes.all()
     for i = 1, #defs do

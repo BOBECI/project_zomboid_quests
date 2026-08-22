@@ -33,6 +33,7 @@ carry a ModData store across a wipe of the mod's globals:
 | `scenario_reload.lua` | progress surviving a quit and reload, the loop still running afterwards |
 | `scenario_newquest.lua` | a quest added to the mod after players already have a save |
 | `scenario_notes.lua` | note validation, writing text onto a vanilla item, locking, the copy recipe, the context menu, the timed action |
+| `scenario_triggers.lua` | all four trigger types: parameter validation, each type firing and holding, the read hook, delivery consuming exactly one item, and dummy_c walked end to end from data |
 
 ## What it cannot tell you
 

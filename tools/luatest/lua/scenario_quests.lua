@@ -56,7 +56,7 @@ print("\n[1] boot")
 Events.OnInitGlobalModData.fire(true)
 Events.OnGameStart.fire()
 local valid, invalid = KnoxStories.Quests.ensureValidated()
-check("2 valid quests registered", valid == 2, valid)
+check("3 valid quests registered", valid == 3, valid)
 check("4 broken quests skipped", invalid == 4, invalid)
 check("a step giving an unknown note is rejected",
     KnoxStories.Quests.get("bad_gives") == nil)
@@ -132,6 +132,21 @@ for i = 1, #KnoxStories.Notes.PEN_TYPES do
 end
 for i = 1, #KnoxStories.Notes.PAPER_TYPES do
     referenced[KnoxStories.Notes.PAPER_TYPES[i]] = "PAPER_TYPES"
+end
+
+-- Trigger specs name items too: acquire_item and deliver_item can carry an
+-- item = "Base.X".
+local questDefs = KnoxStories.Quests.all()
+for i = 1, #questDefs do
+    local qd = questDefs[i]
+    if not qd.invalid then
+        for j = 1, #qd.steps do
+            local spec = qd.steps[j].trigger
+            if spec.item then
+                referenced[spec.item] = "quest '" .. qd.id .. "', step '" .. qd.steps[j].id .. "'"
+            end
+        end
+    end
 end
 
 for fullType, usedBy in pairs(referenced) do

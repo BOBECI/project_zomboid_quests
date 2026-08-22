@@ -40,6 +40,9 @@ local function firstNoteItem(noteId)
     return nil
 end
 
+-- Screwdriver is a weapon, not literature, so it is not writable; the stub does
+-- not model that distinction, which is fine because nothing writes to it.
+
 -- Broken definitions, appended before anything reads the note registry.
 table.insert(KS.NoteDefs, { item = "Base.Notepad", title = "no id", pages = { "x" } })
 table.insert(KS.NoteDefs, { id = "no_pages", item = "Base.Notepad", title = "t", pages = {} })
@@ -57,7 +60,7 @@ print("\n[13] note definition validation")
 Events.OnInitGlobalModData.fire(false)
 Events.OnGameStart.fire()
 local validNotes, invalidNotes = KS.Notes.ensureValidated()
-check("3 valid notes registered", validNotes == 3, validNotes)
+check("4 valid notes registered", validNotes == 4, validNotes)
 check("5 broken notes skipped", invalidNotes == 5, invalidNotes)
 check("a note with no id is unreachable", KS.Notes.get(nil) == nil)
 check("a duplicate id does not replace the original",
@@ -215,9 +218,3 @@ clearInventory()
 inv:AddItem(note)
 check("no longer valid once the pen is gone", action:isValid() == false)
 
-print("")
-if FAILURES == 0 then
-    print("ALL CHECKS PASSED")
-else
-    print(FAILURES .. " CHECK(S) FAILED")
-end

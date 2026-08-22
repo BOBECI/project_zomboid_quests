@@ -34,7 +34,15 @@ KS.Notes = KS.Notes or {}
 -- dropped, traded, saved, or looted off a corpse.
 local MODDATA_KEY = "knoxStoriesNote"
 
+-- Set on the item once the player has opened it. Feeds the read_note trigger.
+local READ_KEY = "knoxStoriesRead"
+
 -- Passed to setLockedBy so the player cannot overwrite quest text.
+--
+-- Confirmed against the game's own code: ISInventoryPaneContextMenu treats an
+-- item whose getLockedBy() is set and does not equal the player's username as
+-- not editable, and offers "Read Note" instead of "Write Note". So the text is
+-- protected and still readable, which is exactly what a quest note needs.
 local LOCK_KEY = "knoxStories"
 
 -- What counts as a writing implement and what counts as blank paper.
@@ -217,6 +225,42 @@ function KS.Notes.idOf(item)
 end
 
 --------------------------------------------------------------------------------
+-- Has it been read?
+--
+-- The flag lives on the item, not on the player, for the same reason quest state
+-- lives in the world: the note is the thing that carries the information. Hand a
+-- read note to someone else and it stays read, which is the point -- the group
+-- learns what the group has learned.
+--
+-- Set by the hook in client/KS_NoteReadHook.lua when the note window opens. A
+-- copy starts unread even if the original was read; it is a fresh piece of paper
+-- and nobody has looked at it yet.
+--------------------------------------------------------------------------------
+
+function KS.Notes.markRead(item)
+    local noteId = KS.Notes.idOf(item)
+    if not noteId then
+        return false
+    end
+
+    local modData = item:getModData()
+    if modData[READ_KEY] then
+        return false
+    end
+
+    modData[READ_KEY] = true
+    KS.log("note '" .. noteId .. "' was opened for the first time")
+    return true
+end
+
+function KS.Notes.isRead(item)
+    if not KS.Notes.idOf(item) then
+        return false
+    end
+    return item:getModData()[READ_KEY] == true
+end
+
+--------------------------------------------------------------------------------
 -- Copying: pen + paper + the original -> a second identical note
 --
 -- Build plan 3.3. Nothing in the reference mod does this, so there is no
@@ -255,39 +299,17 @@ local function isBlankPaper(item, original)
     return true
 end
 
--- Walks the player inventory, including anything inside bags.
-local function findInContainer(container, predicate)
-    local items = container:getItems()
-
-    for i = 0, items:size() - 1 do
-        local item = items:get(i)
-
-        if predicate(item) then
-            return item
-        end
-
-        if item:IsInventoryContainer() then
-            local found = findInContainer(item:getInventory(), predicate)
-            if found then
-                return found
-            end
-        end
-    end
-
-    return nil
-end
-
 -- Returns pen, paper on success, or nil, nil, reason. The reason is written for
 -- a player to read: it goes straight into the greyed-out menu tooltip.
 function KS.Notes.findCopyMaterials(player, original)
     local inventory = player:getInventory()
 
-    local pen = findInContainer(inventory, isPen)
+    local pen = KS.Inventory.find(inventory, isPen)
     if not pen then
         return nil, nil, "You need a pen or pencil."
     end
 
-    local paper = findInContainer(inventory, function(item)
+    local paper = KS.Inventory.find(inventory, function(item)
         return isBlankPaper(item, original)
     end)
     if not paper then

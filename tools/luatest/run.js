@@ -25,6 +25,7 @@ const SCENARIOS = [
   { file: 'scenario_reload.lua', banner: 'QUIT AND RELOAD (globals wiped, ModData kept)', reload: true },
   { file: 'scenario_newquest.lua', banner: 'RELOAD AGAIN, WITH A NEW QUEST ADDED', reload: true },
   { file: 'scenario_notes.lua', banner: 'RELOAD AGAIN: NOTES AND THE COPY RECIPE', reload: true },
+  { file: 'scenario_triggers.lua', banner: 'RELOAD AGAIN: THE FOUR TRIGGER TYPES', reload: true },
 ];
 
 function findLuaFiles(dir) {
@@ -86,6 +87,10 @@ const RELOAD = `
         ModData._store[key] = ModData._store[key] or {}
         return ModData._store[key]
     end
+    -- A game restart also restores any vanilla function the mod wrapped.
+    ISInventoryPaneContextMenu.onWriteSomething =
+        ISInventoryPaneContextMenu._vanillaOnWriteSomething
+    ISInventoryPaneContextMenu.opened = {}
     for _, name in ipairs({ "OnGameStart", "OnPlayerUpdate", "OnInitGlobalModData",
                             "OnFillInventoryObjectContextMenu", "OnFillWorldObjectContextMenu" }) do
         Events[name].handlers = {}

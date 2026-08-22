@@ -18,13 +18,13 @@ local function where(id)
 end
 
 table.insert(KnoxStories.QuestDefs, {
-    id = "dummy_c", firstStep = "s1",
+    id = "dummy_added_later", firstStep = "s1",
     steps = { { id = "s1", trigger = { type = "enter_area", x1 = 1, y1 = 1, x2 = 2, y2 = 2 } } },
 })
 
 print("\n[12] new quest shipped to an existing save")
 Events.OnInitGlobalModData.fire(false)
 Events.OnGameStart.fire()
-check("dummy_c seeded on load", where("dummy_c") == "active/s1", where("dummy_c"))
+check("dummy_added_later seeded on load", where("dummy_added_later") == "active/s1", where("dummy_added_later"))
 check("dummy_a progress preserved", where("dummy_a") == "complete/nil", where("dummy_a"))
 check("dummy_b progress preserved", where("dummy_b") == "complete/nil", where("dummy_b"))

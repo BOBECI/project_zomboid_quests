@@ -62,3 +62,15 @@ table.insert(KnoxStories.NoteDefs, {
             .. "not assume everything is a notepad.",
     },
 })
+
+-- Dummy C's note. Its own, so that quest can be walked without touching the
+-- notes the other two hand out.
+table.insert(KnoxStories.NoteDefs, {
+    id = "dummy_scrap",
+    item = "Base.GraphPaper",
+    title = "Torn scrap of graph paper",
+    pages = {
+        "Used by the Phase 3 trigger quest: this scrap gets read, then carried "
+            .. "to the fire station and handed over.",
+    },
+})

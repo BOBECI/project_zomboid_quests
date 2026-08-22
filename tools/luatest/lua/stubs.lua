@@ -121,6 +121,7 @@ local KNOWN_ITEMS = {
     ["Base.Pencil"] = true,
     ["Base.BluePen"] = true,
     ["Base.RedPen"] = true,
+    ["Base.Screwdriver"] = true,
 }
 
 function instanceItem(fullType)
@@ -265,3 +266,16 @@ ISInventoryPane = {}
 function ISInventoryPane.getActualItems(items) return items end
 
 function getSpecificPlayer(_) return PLAYER end
+
+-- The vanilla function KS_NoteReadHook wraps. Signature confirmed in the B42
+-- install: onWriteSomething(notebook, editable, player) where player is a
+-- player number. _vanilla is kept so a simulated game restart can put the
+-- unwrapped version back.
+ISInventoryPaneContextMenu = ISInventoryPaneContextMenu or {}
+ISInventoryPaneContextMenu.opened = {}
+ISInventoryPaneContextMenu._vanillaOnWriteSomething = function(notebook, editable, player)
+    table.insert(ISInventoryPaneContextMenu.opened,
+        { notebook = notebook, editable = editable, player = player })
+end
+ISInventoryPaneContextMenu.onWriteSomething =
+    ISInventoryPaneContextMenu._vanillaOnWriteSomething

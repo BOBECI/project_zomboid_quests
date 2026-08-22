@@ -98,20 +98,24 @@ end
 -- advances if the world agrees that step is the one currently active.
 --------------------------------------------------------------------------------
 
--- Phase 2: handing over the note attached to a step.
+-- Everything a completed step does to the player's inventory: what the trigger
+-- takes away (deliver_item) and what the step hands over (gives).
+--
+-- Order matters. Consume first, then give: a step that takes one note and hands
+-- back another must not have the new one picked up by its own consume.
 --
 -- Phase 6 seam. Items live in a player's inventory, which is per-player data,
 -- not world state -- so in multiplayer this has to be routed to the player whose
 -- command it was, rather than to whoever happens to be local. In single-player
 -- there is exactly one player and getPlayer() is that player.
-local function deliverStepNote(step)
-    if not step.gives then
+local function applyStepEffects(step)
+    if not step.gives and not KS.Triggers.types[step.trigger.type].consume then
         return
     end
 
     if isServer() then
-        KS.log("step gives note '" .. step.gives
-            .. "', deferred: no local player on a dedicated server")
+        KS.log("step '" .. step.id .. "' has inventory effects, deferred: "
+            .. "no local player on a dedicated server")
         return
     end
 
@@ -120,7 +124,14 @@ local function deliverStepNote(step)
         return
     end
 
-    KS.Notes.giveTo(player, step.gives)
+    local triggerType = KS.Triggers.types[step.trigger.type]
+    if triggerType.consume then
+        triggerType.consume(step.trigger, player)
+    end
+
+    if step.gives then
+        KS.Notes.giveTo(player, step.gives)
+    end
 end
 
 local function advanceStep(payload)
@@ -163,7 +174,7 @@ local function advanceStep(payload)
         KS.print("quest '" .. questId .. "': step '" .. from .. "' was the last one -- COMPLETE")
     end
 
-    deliverStepNote(step)
+    applyStepEffects(step)
 
     -- Phase 1 only. Real feedback is Phase 5's job; this exists so the state
     -- change is visible in game while there is no content to show.

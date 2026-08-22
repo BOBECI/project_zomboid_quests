@@ -88,3 +88,49 @@ table.insert(KnoxStories.QuestDefs, {
         { id = "reach_east", trigger = SPOT_4, unlocks = nil },
     },
 })
+
+--------------------------------------------------------------------------------
+-- Dummy C -- Phase 3. One step per trigger type, in order, so walking this quest
+-- exercises the whole vocabulary the Rosewood pilot needs.
+--
+--   1. enter_area    arrive in Rosewood, and be handed the letter
+--   2. read_note     actually open the letter
+--   3. acquire_item  get hold of a screwdriver
+--   4. deliver_item  carry the letter to the fire station, where it is taken
+--
+-- Step 4 deliberately delivers the note the quest gave you in step 1, so the
+-- consume path is visible: the scrap leaves your inventory.
+--------------------------------------------------------------------------------
+
+table.insert(KnoxStories.QuestDefs, {
+    id = "dummy_c",
+    name = "Dummy C (one step per trigger type)",
+    firstStep = "arrive",
+    steps = {
+        {
+            id = "arrive",
+            trigger = ROSEWOOD_WIDE,
+            gives = "dummy_scrap",
+            unlocks = "read_the_letter",
+        },
+        {
+            id = "read_the_letter",
+            trigger = { type = "read_note", note = "dummy_scrap" },
+            unlocks = "find_a_screwdriver",
+        },
+        {
+            id = "find_a_screwdriver",
+            trigger = { type = "acquire_item", item = "Base.Screwdriver" },
+            unlocks = "hand_it_over",
+        },
+        {
+            id = "hand_it_over",
+            trigger = {
+                type = "deliver_item",
+                note = "dummy_scrap",
+                x = 8040, y = 11790, z = 0, range = 3,
+            },
+            unlocks = nil,
+        },
+    },
+})
