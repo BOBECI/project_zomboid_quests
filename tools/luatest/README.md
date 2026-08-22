@@ -44,8 +44,6 @@ behaves differently from the model.
 
 Specifically unverifiable here:
 
-- whether `Base.SheetPaper`, `Base.Pen`, `Base.GenericMail` and friends are the
-  correct item type names in the current build
 - whether `setLockedBy` really prevents overwriting, and still allows reading
 - whether `instanceItem`, `addPage`, `setPageToWrite` behave as modelled
 - whether `ModData.getOrCreate` data really persists across a save
@@ -53,6 +51,18 @@ Specifically unverifiable here:
 
 Those need the game. Treat a green run as "the logic is consistent", not as
 "this works".
+
+### Item names
+
+`KNOWN_ITEMS` in `lua/stubs.lua` mirrors the real item names in
+`media/scripts/generated/items/` from a B42 install, and `scenario_quests.lua`
+asserts that every type the mod names appears in it. That catches a typo'd or
+invented item name — which is worth having, because `Base.SheetPaper` looked
+entirely reasonable and does not exist.
+
+It is a hand-maintained mirror, so it goes stale if the game's items change.
+When adding a note on a new base item, check the real scripts and add the name
+here in the same commit.
 
 ## Adding a scenario
 

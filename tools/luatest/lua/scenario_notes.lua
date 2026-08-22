@@ -81,7 +81,7 @@ check("carries its id in ModData", letter:getModData()[NOTE_KEY] == "dummy_lette
 
 check("unknown note id creates nothing", KS.Notes.create("nope") == nil)
 check("a note naming a missing item creates nothing", KS.Notes.create("broken_item") == nil)
-check("idOf is nil for a plain item", KS.Notes.idOf(instanceItem("Base.SheetPaper")) == nil)
+check("idOf is nil for a plain item", KS.Notes.idOf(instanceItem("Base.SheetPaper2")) == nil)
 check("idOf finds our note", KS.Notes.idOf(letter) == "dummy_letter")
 
 print("\n[15] copy materials")
@@ -108,18 +108,21 @@ writtenPad:setLockedBy("someoneElse")
 ok = KS.Notes.canCopy(PLAYER, original)
 check("a locked notepad is not blank paper", ok == false)
 
-inv:AddItem("Base.SheetPaper")
+inv:AddItem("Base.SheetPaper2")
 ok = KS.Notes.canCopy(PLAYER, original)
 check("pen plus paper, copy allowed", ok == true)
 
 print("\n[16] the copy itself")
 local penBefore = pen:getUsedDelta()
-local paperBefore = countType("Base.SheetPaper")
+local paperBefore = countType("Base.SheetPaper2")
 local copied, why = KS.Notes.performCopy(PLAYER, original)
 check("copy succeeded", copied == true, why)
 check("exactly one sheet of paper consumed",
-    countType("Base.SheetPaper") == paperBefore - 1, countType("Base.SheetPaper"))
-check("the pen was used", pen:getUsedDelta() < penBefore)
+    countType("Base.SheetPaper2") == paperBefore - 1, countType("Base.SheetPaper2"))
+-- Vanilla pens are base:weapon, not drainable, so copying must neither wear
+-- them out nor destroy them.
+check("the pen survives the copy", inv:contains(pen))
+check("a vanilla pen does not wear out", pen:getUsedDelta() == penBefore)
 check("the locked notepad was not consumed", inv:contains(writtenPad))
 check("the other quest note was not consumed", inv:contains(otherNote))
 check("the original is still there", inv:contains(original))
@@ -143,7 +146,7 @@ check("the copy is locked too", duplicate:getLockedBy() == "knoxStories")
 check("the copy carries the same id", duplicate:getModData()[NOTE_KEY] == "dummy_letter")
 
 print("\n[17] a copy of a copy is still identical")
-inv:AddItem("Base.SheetPaper")
+inv:AddItem("Base.SheetPaper2")
 check("copying the duplicate works", KS.Notes.performCopy(PLAYER, duplicate) == true)
 local third = nil
 for i = 0, items:size() - 1 do
@@ -159,14 +162,24 @@ local ghost = instanceItem("Base.Notepad")
 ghost:getModData()[NOTE_KEY] = "broken_item"
 inv:AddItem(ghost)
 inv:AddItem("Base.Pen")
-inv:AddItem("Base.SheetPaper")
+inv:AddItem("Base.SheetPaper2")
 local failedOk, failedWhy = KS.Notes.performCopy(PLAYER, ghost)
 check("copy failed", failedOk == false, failedWhy)
-check("paper was not consumed", countType("Base.SheetPaper") == 1, countType("Base.SheetPaper"))
+check("paper was not consumed", countType("Base.SheetPaper2") == 1, countType("Base.SheetPaper2"))
 
 clearInventory()
-local plain = inv:AddItem("Base.SheetPaper")
+local plain = inv:AddItem("Base.SheetPaper2")
 check("a plain item cannot be copied", KS.Notes.performCopy(PLAYER, plain) == false)
+
+-- A modded pen that is drainable should still be used up a little.
+clearInventory()
+local drainNote = KS.Notes.giveTo(PLAYER, "dummy_letter")
+local drainPen = inv:AddItem("Base.Pen")
+drainPen._drainable = true
+inv:AddItem("Base.SheetPaper2")
+local drainBefore = drainPen:getUsedDelta()
+check("copy with a drainable pen works", KS.Notes.performCopy(PLAYER, drainNote) == true)
+check("a drainable pen is used up a little", drainPen:getUsedDelta() < drainBefore)
 
 print("\n[19] the context menu a player actually sees")
 clearInventory()
@@ -181,14 +194,14 @@ check("the tooltip says why", option.toolTip.description == "You need a pen or p
     option.toolTip and option.toolTip.description)
 
 inv:AddItem("Base.Pen")
-inv:AddItem("Base.SheetPaper")
+inv:AddItem("Base.SheetPaper2")
 menu = TestMenu.new()
 Events.OnFillInventoryObjectContextMenu.fire(0, menu, { note })
 option = menu:find("Copy this note")
 check("it is enabled once you have the materials", option.notAvailable == nil)
 
 menu = TestMenu.new()
-Events.OnFillInventoryObjectContextMenu.fire(0, menu, { instanceItem("Base.SheetPaper") })
+Events.OnFillInventoryObjectContextMenu.fire(0, menu, { instanceItem("Base.SheetPaper2") })
 check("no option on a plain item", menu:find("Copy this note") == nil)
 
 print("\n[20] the timed action")

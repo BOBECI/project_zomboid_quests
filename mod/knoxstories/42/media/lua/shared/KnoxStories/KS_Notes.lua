@@ -4,10 +4,14 @@
     Quest information as a physical object. This is the mechanic the whole design
     hangs on (overview section 3), so it gets built early and tested hard.
 
-    A note is a vanilla item -- Base.Notepad, Base.GenericMail -- rewritten at
+    A note is a vanilla item -- Base.Notepad, Base.IndexCard -- rewritten at
     spawn time. Nothing here is a custom item. The technique is the one the
     reference mod uses (architecture 4.5): set the name, allow writing, add the
     pages, then lock it so the player cannot overwrite the text.
+
+    The base item must have CanBeWrite = true in the game's own item scripts.
+    Base.GenericMail does not, despite the reference mod appearing to use it for
+    exactly this -- see the list in notes/KS_DummyNotes.lua.
 
     Everything a note "is" comes from a data record, and the item carries only
     the note's id in its ModData. That matters for copying: a duplicate is built
@@ -33,11 +37,22 @@ local MODDATA_KEY = "knoxStoriesNote"
 -- Passed to setLockedBy so the player cannot overwrite quest text.
 local LOCK_KEY = "knoxStories"
 
--- What counts as a writing implement and what counts as blank paper. If a type
--- name here is wrong for the current build the copy option simply never appears,
--- so these are deliberately lists rather than single items.
+-- What counts as a writing implement and what counts as blank paper.
+--
+-- These names are read off media/scripts/generated/items/ in the B42 install,
+-- not guessed. Two things there are worth knowing:
+--
+--   - the sheet of paper is SheetPaper2. There is no Base.SheetPaper.
+--   - pens and pencils are base:weapon, not drainable, so copying does not wear
+--     them out. That is fine: the cost of a copy is the paper and the time, not
+--     the pen. performCopy still calls Use() if it ever meets a drainable one.
+--
+-- Every vanilla writing implement carries the tag "write", which would be a
+-- tidier test than a list. Left as a list because a tag lookup is one more
+-- engine call I cannot verify from the scripts alone, and a wrong guess here
+-- silently removes the copy option.
 KS.Notes.PEN_TYPES = { "Base.Pen", "Base.Pencil", "Base.BluePen", "Base.RedPen" }
-KS.Notes.PAPER_TYPES = { "Base.SheetPaper", "Base.Notepad" }
+KS.Notes.PAPER_TYPES = { "Base.SheetPaper2", "Base.Notepad", "Base.GraphPaper", "Base.IndexCard" }
 
 local index = nil
 local validated = false

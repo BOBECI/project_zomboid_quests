@@ -23,8 +23,8 @@ end
 local function onSpawnMaterials(player)
     local inventory = player:getInventory()
     inventory:AddItem("Base.Pen")
-    inventory:AddItem("Base.SheetPaper")
-    inventory:AddItem("Base.SheetPaper")
+    inventory:AddItem("Base.SheetPaper2")
+    inventory:AddItem("Base.SheetPaper2")
     KS.print("spawned a pen and two sheets of paper")
 end
 

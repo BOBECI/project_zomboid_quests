@@ -9,8 +9,32 @@
     when it turns their paragraphs into pages.
 
     The two notes differ deliberately: one is a multi-page notepad, one is a
-    single-page piece of mail, so the page handling and two different vanilla
-    base items both get exercised.
+    single-page card, so the page handling and two different vanilla base items
+    both get exercised.
+
+    ---------------------------------------------------------------------------
+    CHOOSING A BASE ITEM
+
+    It must have CanBeWrite = true in the game's own item scripts, and its
+    PageToWrite is the most pages it can hold. Verified in B42:
+
+        Base.Notepad        5 pages
+        Base.Journal        20 pages
+        Base.Notebook       10 pages
+        Base.Diary1/2       40 pages
+        Base.SheetPaper2    1 page      (this is the sheet of paper; there is
+                                         no Base.SheetPaper)
+        Base.IndexCard      1 page
+        Base.GraphPaper     1 page
+        Base.Card_*         1 page      (greeting cards)
+
+    Base.GenericMail is NOT writable and has an OnCreate that generates its own
+    text, so it cannot carry quest pages -- despite the reference mod appearing
+    to use it.
+
+    Nothing yet stops a note declaring more pages than its item can hold; the
+    extra pages would just be lost. Phase 5's loader is where that check belongs.
+    ---------------------------------------------------------------------------
 ]]
 
 KnoxStories = KnoxStories or {}
@@ -31,8 +55,8 @@ table.insert(KnoxStories.NoteDefs, {
 
 table.insert(KnoxStories.NoteDefs, {
     id = "dummy_envelope",
-    item = "Base.GenericMail",
-    title = "Unopened envelope",
+    item = "Base.IndexCard",
+    title = "Scrawled index card",
     pages = {
         "A single page, on a different base item, to check the copy recipe does "
             .. "not assume everything is a notepad.",

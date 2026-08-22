@@ -72,7 +72,10 @@ function Item.new(fullType)
         _name = fullType,
         _pages = {},
         _modData = {},
-        _drainable = (fullType == "Base.Pen" or fullType == "Base.Pencil"),
+        -- No vanilla writing implement is drainable: Pen and Pencil are
+        -- base:weapon with a condition, not a use delta. Tests that want the
+        -- drainable path set _drainable on the instance.
+        _drainable = false,
         _uses = 1.0,
     }, Item)
 end
@@ -100,17 +103,29 @@ function Item:IsDrainable() return self._drainable == true end
 function Item:Use() self._uses = self._uses - 0.1 end
 function Item:getUsedDelta() return self._uses end
 
+-- Item names verified against media/scripts/generated/items/ in the B42 install.
+-- Keep this in sync with the game, not with what the mod happens to ask for:
+-- scenario_quests asserts that every type the mod names appears here, which is
+-- what catches a typo'd or invented item name before it reaches the game.
+--
+-- Deliberately absent: Base.SheetPaper (does not exist; it is SheetPaper2) and
+-- Base.GenericMail (exists, but has no CanBeWrite, so it cannot hold pages).
+local KNOWN_ITEMS = {
+    ["Base.Notepad"] = true,
+    ["Base.Journal"] = true,
+    ["Base.Notebook"] = true,
+    ["Base.SheetPaper2"] = true,
+    ["Base.GraphPaper"] = true,
+    ["Base.IndexCard"] = true,
+    ["Base.Pen"] = true,
+    ["Base.Pencil"] = true,
+    ["Base.BluePen"] = true,
+    ["Base.RedPen"] = true,
+}
+
 function instanceItem(fullType)
-    -- The engine returns nil for a type that does not exist. Only the types the
-    -- dummy content actually uses are considered real here.
-    local known = {
-        ["Base.Notepad"] = true,
-        ["Base.GenericMail"] = true,
-        ["Base.SheetPaper"] = true,
-        ["Base.Pen"] = true,
-        ["Base.Pencil"] = true,
-    }
-    if not known[fullType] then
+    -- The engine returns nil for a type that does not exist.
+    if not KNOWN_ITEMS[fullType] then
         return nil
     end
     return Item.new(fullType)

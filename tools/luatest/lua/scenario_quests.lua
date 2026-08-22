@@ -117,5 +117,26 @@ check("state unchanged by stale claim", where("dummy_b") == "active/reach_west",
 check("matching step accepted", C.send(C.ADVANCE_STEP, { questId = "dummy_b", stepId = "reach_west" }) == true)
 check("dummy_b now mid-quest", where("dummy_b") == "active/reach_east", where("dummy_b"))
 
+print("\n[10] every vanilla item the mod names must actually exist")
+-- This is the check that would have caught Base.SheetPaper, which does not exist
+-- in B42 -- the sheet of paper is SheetPaper2. A wrong name here is invisible
+-- until the game refuses to spawn the item, so it is worth asserting directly.
+-- KNOWN_ITEMS in stubs.lua is kept in sync with the game's own item scripts.
+local referenced = {}
+local noteDefs = KnoxStories.Notes.all()
+for i = 1, #noteDefs do
+    if not noteDefs[i].invalid then referenced[noteDefs[i].item] = "note '" .. noteDefs[i].id .. "'" end
+end
+for i = 1, #KnoxStories.Notes.PEN_TYPES do
+    referenced[KnoxStories.Notes.PEN_TYPES[i]] = "PEN_TYPES"
+end
+for i = 1, #KnoxStories.Notes.PAPER_TYPES do
+    referenced[KnoxStories.Notes.PAPER_TYPES[i]] = "PAPER_TYPES"
+end
+
+for fullType, usedBy in pairs(referenced) do
+    check(fullType .. " exists (" .. usedBy .. ")", instanceItem(fullType) ~= nil)
+end
+
 -- Park the player somewhere no trigger covers, so the reload test starts clean.
 PLAYER.x, PLAYER.y, PLAYER.z = 100, 100, 0
