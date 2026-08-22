@@ -232,6 +232,33 @@ if parent and parent.subMenu then
     end
 end
 
+print("\n[52] a missing OnZombieUpdate must announce itself")
+-- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
+-- files, so its existence cannot be confirmed by reading the install. If it is
+-- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and
+-- Diane silently keeps coming back as a zombie -- a failure indistinguishable
+-- from the bug that file exists to fix.
+local savedEvent = Events.OnZombieUpdate
+Events.OnZombieUpdate = nil
+LOG = {}
+
+local loadedOk = pcall(function()
+    local chunk = load(MAINTAIN_SOURCE, "KS_NPCMaintain")
+    return chunk()
+end)
+
+Events.OnZombieUpdate = savedEvent
+
+check("the file still loads without the event", loadedOk == true)
+check("and says so loudly", (function()
+    for i = 1, #LOG do
+        if tostring(LOG[i]):find("no OnZombieUpdate event") then
+            return true
+        end
+    end
+    return false
+end)())
+
 print("")
 if FAILURES == 0 then
     print("ALL CHECKS PASSED")

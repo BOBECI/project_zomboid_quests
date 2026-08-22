@@ -91,4 +91,25 @@ local function onZombieUpdate(zombie)
     end
 end
 
-Events.OnZombieUpdate.Add(onZombieUpdate)
+--------------------------------------------------------------------------------
+-- Registration
+--
+-- OnZombieUpdate is fired by the engine, not by the game's Lua -- it appears
+-- nowhere in media/, and neither does any other zombie event name, so its
+-- existence cannot be confirmed by reading the install. The only positive
+-- evidence is that the reference mod uses it and works.
+--
+-- If that turns out to be wrong, Events.OnZombieUpdate is nil and calling .Add
+-- on it throws while this file is loading. The whole file would then be absent
+-- with nothing obviously wrong in the console, and Diane would silently keep
+-- coming back as a zombie -- which is a failure that looks exactly like the bug
+-- this file exists to fix. Guarded so it says so instead.
+--------------------------------------------------------------------------------
+
+if Events.OnZombieUpdate then
+    Events.OnZombieUpdate.Add(onZombieUpdate)
+else
+    KS.warn("this build has no OnZombieUpdate event, so the NPC disguise cannot be "
+        .. "re-applied after a reload. Diane will come back as a plain zombie. "
+        .. "Tell me and I will move the maintenance onto a polled sweep instead.")
+end

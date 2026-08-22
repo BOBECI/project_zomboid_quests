@@ -113,7 +113,13 @@ function run(label, src) {
 
 const readLua = (name) => fs.readFileSync(path.join(LUA_DIR, name), 'utf8');
 
+// The maintenance file's own source, so a scenario can re-load it with the
+// engine event removed and prove it degrades loudly rather than vanishing.
+const maintainPath = path.join(MOD_LUA, 'client', 'KnoxStories', 'KS_NPCMaintain.lua');
+const maintainSrc = fs.readFileSync(maintainPath, 'utf8');
+
 run('stubs', readLua('stubs.lua'));
+run('maintain-source', 'MAINTAIN_SOURCE = ' + JSON.stringify(maintainSrc));
 run('mod', modSource);
 
 for (const scenario of SCENARIOS) {
