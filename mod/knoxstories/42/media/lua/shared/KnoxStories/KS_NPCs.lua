@@ -42,8 +42,24 @@ KS.NPCs = KS.NPCs or {}
 -- Written into the zombie's ModData so an NPC can be recognised again later.
 local MODDATA_KEY = "knoxStoriesNPC"
 
--- The BOOL the lifted animation nodes are gated on.
+-- The BOOL our lifted animation nodes are gated on.
 KS.NPCs.ANIM_VARIABLE = "knoxNpcIdle"
+
+-- An NPC may override it, and that exists for exactly one reason: to settle
+-- whether our animset files are being loaded at all.
+--
+-- Everything checkable has been checked and matches the reference mod -- folder
+-- layout, both shipping locations, no manifest file, no variable registry, an
+-- equivalent mod.info -- while the variable reads back true and the animation
+-- stays a zombie's. That question is not answerable by reading more files.
+--
+-- The experiment: enable StorylinesFW, set animVariable = "npcQuestIdle" on an
+-- NPC. If she stands like a person on THEIR variable, their nodes load and ours
+-- do not, and the fault is in our files. If she still shambles, the animsets are
+-- innocent and the fault is in how the disguise is applied.
+function KS.NPCs.animVariableFor(def)
+    return (def and def.animVariable) or KS.NPCs.ANIM_VARIABLE
+end
 
 local index = nil
 local validated = false
@@ -273,7 +289,7 @@ function KS.NPCs.applyDisguise(zombie, def)
 
     -- The lifted animation nodes are gated on this. Without it the model plays
     -- the zombie shamble no matter what else is set.
-    zombie:setVariable(KS.NPCs.ANIM_VARIABLE, true)
+    zombie:setVariable(KS.NPCs.animVariableFor(def), true)
 
     local descriptor = zombie:getDescriptor()
     if descriptor then
@@ -330,7 +346,7 @@ local function read(fn)
     return tostring(value)
 end
 
-function KS.NPCs.readBack(zombie)
+function KS.NPCs.readBack(zombie, def)
     local skin = read(function()
         local visual = zombie:getHumanVisual()
         if not visual then
@@ -389,9 +405,11 @@ end
 -- is the same check the reference mod guards its per-update work with, and it is
 -- the piece I was missing: without it there was no way to tell "still dressed"
 -- from "dressed once, then overwritten".
-function KS.NPCs.isDisguised(zombie)
+function KS.NPCs.isDisguised(zombie, def)
+    local name = KS.NPCs.animVariableFor(def)
+
     local ok, value = pcall(function()
-        return zombie:getVariableBoolean(KS.NPCs.ANIM_VARIABLE)
+        return zombie:getVariableBoolean(name)
     end)
 
     return ok and value == true
@@ -399,7 +417,7 @@ end
 
 function KS.NPCs.assertLightweight(zombie, def)
     -- Cheap when nothing is wrong, which is the common case.
-    if KS.NPCs.isDisguised(zombie) then
+    if KS.NPCs.isDisguised(zombie, def) then
         return false
     end
 

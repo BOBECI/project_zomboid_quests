@@ -122,7 +122,7 @@ local function onZombieUpdate(zombie)
         KS.NPCs.applyDisguise(zombie, def)
 
         if updates == 1 then
-            local readOk, report = pcall(KS.NPCs.readBack, zombie)
+            local readOk, report = pcall(KS.NPCs.readBack, zombie, def)
             KS.log("dressing '" .. def.id .. "' -- before: "
                 .. (readOk and report or "read-back failed"))
             reportsLeft[def.id] = REPORTS_PER_SPAWN
@@ -196,7 +196,7 @@ local function sweep()
 
                     -- Guarded: a diagnostic must never be the thing that breaks
                     -- the sweep it is diagnosing.
-                    local readOk, report = pcall(KS.NPCs.readBack, zombie)
+                    local readOk, report = pcall(KS.NPCs.readBack, zombie, def)
                     KS.log("after dressing '" .. npcId .. "': "
                         .. (readOk and report or "read-back failed"))
                 end

@@ -27,6 +27,11 @@ table.insert(KnoxStories.NPCDefs, {
     -- you want a woman standing in her own kitchen to be wearing.
     outfit = "DressLong",
     female = true,
+
+    -- Diagnostic escape hatch, normally absent. Set this to "npcQuestIdle" with
+    -- StorylinesFW enabled to find out whether our animset files are being
+    -- loaded at all -- see KS_NPCs.animVariableFor.
+    -- animVariable = "npcQuestIdle",
     dialogue = {
         "You're the first person through that door in a while. "
             .. "I'd offer you something but there's not much left.",

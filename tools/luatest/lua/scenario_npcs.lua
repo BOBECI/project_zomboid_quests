@@ -348,7 +348,7 @@ print("\n[56] the read-back reports what actually stuck")
 -- "We called the setter" turned out to be worthless evidence, so the diagnostic
 -- reads the state back off the zombie instead.
 KS.NPCs.applyDisguise(fresh, diane)
-local report = KS.NPCs.readBack(fresh)
+local report = KS.NPCs.readBack(fresh, diane)
 
 check("it names the skin", report:find("skin=FemaleBody") ~= nil, report)
 check("it reports invulnerability", report:find("invuln=true") ~= nil, report)
@@ -359,7 +359,7 @@ check("it reports the cleared voice", report:find("voice=") ~= nil, report)
 check("a missing getter shows as a question mark", report:find("canWalk=%?") ~= nil, report)
 check("the animation variable value is reported, not the slot object",
     report:find("animVar=true") ~= nil, report)
-check("reading back never throws", pcall(KS.NPCs.readBack, fresh) == true)
+check("reading back never throws", pcall(KS.NPCs.readBack, fresh, diane) == true)
 
 print("\n[57] the contested parts are re-stated every frame, not on a timer")
 -- In play the full disguise read back correct on every sample and she still
