@@ -280,7 +280,52 @@ for _ = 1, 40 do Events.OnZombieUpdate.fire(fresh) end
 check("it is still re-asserted much later", fresh._canWalk == false)
 check("and blood is still cleaned", fresh:isBloody() == false)
 
-print("\n[54] a missing OnZombieUpdate must announce itself")
+print("\n[54] the disguise holds without OnZombieUpdate at all")
+-- Reported from play: the engine's own "Spawning new Female Zed, Dressed in
+-- DressLong" appeared, our spawn line appeared, and she was still a zombie with
+-- a zombie's skin. That is what it looks like when nothing re-asserts -- so the
+-- whole mechanism must not depend on an event that cannot be confirmed to exist.
+local savedZombieEvent = Events.OnZombieUpdate
+Events.OnZombieUpdate = nil
+KS.NPCMaintain.forget()
+
+fresh:forgetRuntimeState()
+check("she is a zombie again", fresh:skinName():find("Zed") ~= nil)
+
+-- Only OnPlayerUpdate, which is plain vanilla and which the evaluator already
+-- uses. No zombie event, no ModData lookup.
+for _ = 1, 20 do Events.OnPlayerUpdate.fire(PLAYER) end
+
+check("the polled sweep dressed her anyway", fresh._canWalk == false)
+check("face included", fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+check("and silenced her", fresh._descriptor.voice == "")
+
+-- It has to keep holding, because the engine keeps overwriting.
+for _ = 1, 5 do
+    fresh:forgetRuntimeState()
+    for _ = 1, 20 do Events.OnPlayerUpdate.fire(PLAYER) end
+end
+check("and it keeps winning the race", fresh:skinName():find("FemaleBody") ~= nil)
+
+-- An entry for an NPC nobody defines any more is only keeping a zombie alive in
+-- memory.
+KS.NPCServer.live["ghost_npc"] = fresh
+KS.NPCMaintain.sweep()
+check("an entry with no definition is forgotten", KS.NPCServer.live["ghost_npc"] == nil)
+
+-- A reference into an unloaded cell must be dropped, not crashed on.
+local realRef = KS.NPCServer.live["diane"]
+KS.NPCServer.live["diane"] = setmetatable({}, {
+    __index = function() error("this zombie is gone", 0) end,
+})
+local sweepOk = pcall(KS.NPCMaintain.sweep)
+check("a dead reference does not take the sweep down", sweepOk == true)
+check("and is forgotten so she can respawn", KS.NPCServer.live["diane"] == nil)
+KS.NPCServer.live["diane"] = realRef
+
+Events.OnZombieUpdate = savedZombieEvent
+
+print("\n[55] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
 -- files, so its existence cannot be confirmed by reading the install. If it is
 -- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and

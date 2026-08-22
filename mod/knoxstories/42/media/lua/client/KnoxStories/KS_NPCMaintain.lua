@@ -42,10 +42,17 @@ local SETTLE_UPDATES = 10
 -- her: applying the disguise cleans it, and being struck is not a one-off event.
 local REASSERT_EVERY = 30
 
+-- How often the polled sweep runs, in player updates. Four times a second: fast
+-- enough that the engine never wins the race for long, cheap enough to ignore
+-- when there is one NPC in the world.
+
+local TICKS_PER_SWEEP = 15
+
 -- uid -> how many updates we have seen for that zombie. Deliberately not
 -- persisted: after a reload every tagged zombie must be treated as brand new,
 -- which is exactly what an empty table gives us.
 local seen = {}
+local sweepTicks = 0
 
 local function uidOf(zombie)
     local ok, uid = pcall(function() return zombie:getUID() end)
@@ -54,6 +61,7 @@ end
 
 function KS.NPCMaintain.forget()
     seen = {}
+    sweepTicks = 0
 end
 
 local function onZombieUpdate(zombie)
@@ -101,24 +109,72 @@ local function onZombieUpdate(zombie)
 end
 
 --------------------------------------------------------------------------------
--- Registration
+-- The sweep
 --
--- OnZombieUpdate is fired by the engine, not by the game's Lua -- it appears
--- nowhere in media/, and neither does any other zombie event name, so its
--- existence cannot be confirmed by reading the install. The only positive
--- evidence is that the reference mod uses it and works.
+-- This, not OnZombieUpdate, is what actually keeps the disguise on.
 --
--- If that turns out to be wrong, Events.OnZombieUpdate is nil and calling .Add
--- on it throws while this file is loading. The whole file would then be absent
--- with nothing obviously wrong in the console, and Diane would silently keep
--- coming back as a zombie -- which is a failure that looks exactly like the bug
--- this file exists to fix. Guarded so it says so instead.
+-- The first version hung everything on OnZombieUpdate. It exists nowhere in the
+-- game's own files, so it could not be confirmed by reading the install; the
+-- only evidence was that the reference mod uses it. In play the spawn line
+-- appeared, the engine's own "Spawning new Female Zed, Dressed in DressLong"
+-- appeared, and she was still a zombie with a zombie's skin -- which is what it
+-- looks like when nothing re-asserts.
+--
+-- So the mechanism is now a poll over references we were handed at creation.
+-- OnPlayerUpdate is a plain vanilla event the evaluator already relies on, and a
+-- direct reference avoids the other unverifiable route: zombie ModData, which
+-- the engine recycles between zombies -- the reference mod carries explicit code
+-- to detect exactly that.
+--
+-- OnZombieUpdate is still used if it happens to exist, because it reacts a frame
+-- sooner. It is no longer load-bearing.
 --------------------------------------------------------------------------------
+
+local function sweep()
+    local live = KS.NPCServer and KS.NPCServer.live
+    if not live then
+        return
+    end
+
+    for npcId, zombie in pairs(live) do
+        local def = KS.NPCs.get(npcId)
+
+        if not def or not zombie then
+            -- An NPC that has been taken out of the registry, or an entry that
+            -- was never filled in. Nothing will ever dress it, so holding the
+            -- reference only keeps a zombie alive in memory.
+            live[npcId] = nil
+        else
+            -- A zombie whose cell has gone takes its object with it, so calling
+            -- into a stale reference can fail. Dropping it is correct: the
+            -- spawner will make a new one when the cell comes back.
+            local ok = pcall(KS.NPCs.applyDisguise, zombie, def)
+
+            if not ok then
+                live[npcId] = nil
+                KS.log("lost the reference to '" .. npcId .. "'; it will respawn")
+            end
+        end
+    end
+end
+
+local function onPlayerUpdate()
+    sweepTicks = sweepTicks + 1
+
+    if sweepTicks < TICKS_PER_SWEEP then
+        return
+    end
+    sweepTicks = 0
+
+    sweep()
+end
+
+KS.NPCMaintain.sweep = sweep
+
+Events.OnPlayerUpdate.Add(onPlayerUpdate)
 
 if Events.OnZombieUpdate then
     Events.OnZombieUpdate.Add(onZombieUpdate)
 else
-    KS.warn("this build has no OnZombieUpdate event, so the NPC disguise cannot be "
-        .. "re-applied after a reload. Diane will come back as a plain zombie. "
-        .. "Tell me and I will move the maintenance onto a polled sweep instead.")
+    KS.log("no OnZombieUpdate event in this build; the polled sweep covers it")
 end

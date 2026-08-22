@@ -48,7 +48,16 @@ function KS.NPCServer.isSpawned(npcId)
     return record ~= nil and record.spawned == true
 end
 
+-- Live references to the zombies we are pretending are people.
+--
+-- Held directly rather than looked up, because every route to finding them again
+-- goes through something unverifiable: ModData that the engine recycles between
+-- zombies, or an event that may not exist in this build. A reference we were
+-- handed at creation is the one thing we can be sure of.
+KS.NPCServer.live = KS.NPCServer.live or {}
+
 function KS.NPCServer.recordSpawned(npcId, zombie)
+    KS.NPCServer.live[npcId] = zombie
     npcState()[npcId] = {
         spawned = true,
         x = math.floor(zombie:getX()),
@@ -67,6 +76,8 @@ function KS.NPCServer.clearSpawnRecords()
             cleared = cleared + 1
         end
     end
+
+    KS.NPCServer.live = {}
 
     if cleared > 0 then
         KS.log("cleared " .. cleared .. " stale npc spawn record(s)")
