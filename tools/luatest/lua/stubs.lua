@@ -703,3 +703,7 @@ function Zombie:getHumanVisual()
 
     return visual
 end
+
+-- The value, not the slot. This is what the reference mod guards on, and what
+-- distinguishes "still dressed" from "dressed once, then overwritten".
+function Zombie:getVariableBoolean(name) return self._vars[name] == true end

@@ -357,8 +357,8 @@ check("it reports the cleared voice", report:find("voice=") ~= nil, report)
 -- A getter that does not exist must show as "?" rather than break the sweep --
 -- a column of them is how we learn the API name is wrong.
 check("a missing getter shows as a question mark", report:find("canWalk=%?") ~= nil, report)
-check("the animation slot is reported as set, not as a Java object",
-    report:find("animVar=set") ~= nil, report)
+check("the animation variable value is reported, not the slot object",
+    report:find("animVar=true") ~= nil, report)
 check("reading back never throws", pcall(KS.NPCs.readBack, fresh) == true)
 
 print("\n[57] the contested parts are re-stated every frame, not on a timer")
@@ -367,25 +367,32 @@ print("\n[57] the contested parts are re-stated every frame, not on a timer")
 -- nodes are gated on, and PZ drives animation variables from character state
 -- each frame -- so a value set four times a second may never be the one in
 -- effect when the animation is chosen.
+check("a dressed npc is recognised as dressed", KS.NPCs.isDisguised(fresh) == true)
+check("asserting costs nothing when nothing is wrong",
+    KS.NPCs.assertLightweight(fresh, diane) == false)
+
 fresh:setVariable(KS.NPCs.ANIM_VARIABLE, nil)
-KS.NPCs.assertLightweight(fresh, diane)
-check("the animation variable is re-stated", fresh:getVariable(KS.NPCs.ANIM_VARIABLE) == true)
+check("a lapsed variable is noticed", KS.NPCs.isDisguised(fresh) == false)
+check("and triggers a full re-dress", KS.NPCs.assertLightweight(fresh, diane) == true)
+check("the variable is back", KS.NPCs.isDisguised(fresh) == true)
 
 -- It must not thrash the model when nothing has changed: a refresh every frame
--- is its own problem.
+-- would be its own problem.
 local resetsBefore = fresh._modelReset or 0
 KS.NPCs.assertLightweight(fresh, diane)
-check("an unchanged skin does not refresh the model",
+check("a dressed npc costs no model refresh",
     (fresh._modelReset or 0) == resetsBefore)
 
--- And it must notice when the engine puts a zombie texture back, because that
--- distinguishes "we set it too rarely" from "something is overwriting us".
+-- When the variable does lapse, the re-dress is the full one -- the reference
+-- mod treats a lost variable as "everything is lost" rather than putting the
+-- variable back on its own, and the face is part of everything.
+fresh:setVariable(KS.NPCs.ANIM_VARIABLE, nil)
 fresh:zombieSkin()
-local drifted = KS.NPCs.assertLightweight(fresh, diane)
-check("drift is detected", drifted == true)
-check("and corrected", fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
-check("and the model is refreshed for it",
-    (fresh._modelReset or 0) > resetsBefore)
+check("a lapse triggers the full re-dress", KS.NPCs.assertLightweight(fresh, diane) == true)
+check("the face comes back with it",
+    fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+check("and the model is refreshed", (fresh._modelReset or 0) > resetsBefore)
+check("she is dressed again", KS.NPCs.isDisguised(fresh) == true)
 
 print("\n[58] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own

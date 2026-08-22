@@ -344,11 +344,11 @@ function KS.NPCs.readBack(zombie)
         return visual:getSkinTextureName()
     end)
 
-    -- getVariable hands back an AnimationVariableSlotBool, not a boolean, and
-    -- printing the object gives a class name and an address. Whether the slot
-    -- exists at all is the useful fact.
+    -- getVariableBoolean gives the value. getVariable gives the slot object,
+    -- which is why an earlier version of this could only ever report that a slot
+    -- existed -- true and false looked identical in the log.
     local animVar = read(function()
-        return zombie:getVariable(KS.NPCs.ANIM_VARIABLE) ~= nil and "set" or "unset"
+        return zombie:getVariableBoolean(KS.NPCs.ANIM_VARIABLE)
     end)
 
     return table.concat({
@@ -382,29 +382,31 @@ end
 -- and the answer is somewhere other than "assert harder".
 --------------------------------------------------------------------------------
 
+-- Is the disguise currently in effect?
+--
+-- getVariableBoolean reads the actual value; getVariable hands back the slot
+-- object, which is why the read-back could only ever say the slot existed. This
+-- is the same check the reference mod guards its per-update work with, and it is
+-- the piece I was missing: without it there was no way to tell "still dressed"
+-- from "dressed once, then overwritten".
+function KS.NPCs.isDisguised(zombie)
+    local ok, value = pcall(function()
+        return zombie:getVariableBoolean(KS.NPCs.ANIM_VARIABLE)
+    end)
+
+    return ok and value == true
+end
+
 function KS.NPCs.assertLightweight(zombie, def)
-    zombie:setVariable(KS.NPCs.ANIM_VARIABLE, true)
-
-    local visual = zombie:getHumanVisual()
-    if not visual then
+    -- Cheap when nothing is wrong, which is the common case.
+    if KS.NPCs.isDisguised(zombie) then
         return false
     end
 
-    local wanted = (def.female and "FemaleBody0" or "MaleBody0")
-        .. tostring(def.skinTexture or 1)
-
-    local ok, current = pcall(function() return visual:getSkinTexture() end)
-    if not ok then
-        return false
-    end
-
-    if tostring(current) == wanted then
-        return false
-    end
-
-    -- Drifted. Put it back and push it to the drawn model.
-    visual:setSkinTextureName(wanted)
-    zombie:resetModelNextFrame()
-
+    -- The variable has lapsed, so assume everything else has too and re-dress
+    -- her completely -- suppression, face and all. This is what the reference
+    -- does on every zombie update.
+    KS.NPCs.applyDisguise(zombie, def)
     return true
 end
+
