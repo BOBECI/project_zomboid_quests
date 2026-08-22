@@ -156,6 +156,82 @@ local badSpec = { type = "deliver_item", note = "dummy_letter", npc = "ghost" }
 local ok, reason = T.deliver_item.validate(badSpec)
 check("naming an npc who does not exist is rejected", ok == false, reason)
 
+print("\n[48] blood does not stay on an invulnerable NPC")
+-- Found in play: she is invulnerable, but being struck still marks her clothing
+-- and skin. A woman standing calmly in her kitchen covered in spatter reads as a
+-- zombie however still she is.
+KS.NPCServer.clearSpawnRecords()
+KS.NPCMaintain.forget()
+loadSquare(diane.x, diane.y, 0, true, true)
+SPAWNED_ZOMBIES = {}
+Events.LoadGridsquare.fire(getCell():getGridSquare(diane.x, diane.y, 0))
+
+-- She may have been created just now, or adopted from the earlier section --
+-- both are correct, and the blood behaviour is the same either way.
+local her = SPAWNED_ZOMBIES[1]
+    or KS.NPCServer.findExistingAt("diane", diane.x, diane.y, 0)
+check("she is present", her ~= nil)
+
+her:getHumanVisual():setBlood("part0", 0)
+her:getWornItems():get(0):getItem():getVisual():setBlood("part1", 0)
+check("she starts clean", her:isBloody() == false)
+
+her:bloody()
+check("a hit marks her", her:isBloody() == true)
+
+for _ = 1, 40 do Events.OnZombieUpdate.fire(her) end
+check("and it is wiped off within a second", her:isBloody() == false)
+
+print("\n[49] she survives a reload as a person, not a zombie")
+-- Found in play: walk away, come back, and she is a plain zombie in a long
+-- dress. Her id is in ModData and survives; setCanWalk, the animation variable,
+-- invulnerability and the voice prefix are runtime state and do not.
+her:forgetRuntimeState()
+KS.NPCMaintain.forget()
+KS.NPCServer.clearSpawnRecords()
+
+check("the reload left her identifiable", KS.NPCs.idOf(her) == "diane")
+check("but shambling", her._canWalk == nil)
+check("and groaning", her._descriptor.voice == "zombie")
+check("and killable", her._invulnerable == nil)
+
+Events.OnZombieUpdate.fire(her)
+
+check("she is a person again", her._canWalk == false)
+check("silent again", her._descriptor.voice == "")
+check("invulnerable again", her._invulnerable == true)
+check("animating as a human again", her:getVariable(KS.NPCs.ANIM_VARIABLE) == true)
+check("and the world knows she is here", KS.NPCServer.isSpawned("diane") == true)
+
+print("\n[50] and there is only ever one of her")
+-- The other half of the same bug: with the spawn record cleared and the original
+-- still standing there, the spawner would happily make a second Diane.
+local before = #SPAWNED_ZOMBIES
+KS.NPCServer.clearSpawnRecords()
+getCell():getGridSquare(diane.x, diane.y, 0):addMovingObject(her)
+Events.LoadGridsquare.fire(getCell():getGridSquare(diane.x, diane.y, 0))
+check("no second Diane was created", #SPAWNED_ZOMBIES == before, #SPAWNED_ZOMBIES)
+check("the existing one was adopted", KS.NPCServer.isSpawned("diane") == true)
+check("and re-dressed", her._canWalk == false)
+
+print("\n[51] every quest can be reset from the debug menu")
+-- Reported from play: no way to re-run dummy_e. The menu builds itself from the
+-- registry, so this asserts the list rather than trusting it.
+local menu = TestMenu.new()
+Events.OnFillWorldObjectContextMenu.fire(0, menu, {}, false)
+local parent = menu:find("[KnoxStories] Debug")
+check("the debug menu exists", parent ~= nil and parent.subMenu ~= nil)
+
+if parent and parent.subMenu then
+    local defs = KS.Quests.all()
+    for i = 1, #defs do
+        if not defs[i].invalid then
+            check("reset offered for " .. defs[i].id,
+                parent.subMenu:find("Reset quest: " .. defs[i].id) ~= nil)
+        end
+    end
+end
+
 print("")
 if FAILURES == 0 then
     print("ALL CHECKS PASSED")

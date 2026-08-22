@@ -588,3 +588,76 @@ function Square:makeObject(spriteName)
     self._objects:add(object)
     return object
 end
+
+--------------------------------------------------------------------------------
+-- Blood, worn clothing and zombie identity
+--------------------------------------------------------------------------------
+
+BloodBodyPartType = {
+    MAX = { index = function() return 3 end },
+    FromIndex = function(i) return "part" .. i end,
+}
+
+local function newVisual()
+    local blood, dirt = {}, {}
+    return {
+        _blood = blood, _dirt = dirt,
+        setBlood = function(_, part, v) blood[part] = v end,
+        getBlood = function(_, part) return blood[part] or 0 end,
+        setDirt = function(_, part, v) dirt[part] = v end,
+        getDirt = function(_, part) return dirt[part] or 0 end,
+    }
+end
+
+local nextUID = 1
+
+function Zombie:getUID()
+    if not self._uid then
+        self._uid = nextUID
+        nextUID = nextUID + 1
+    end
+    return self._uid
+end
+
+function Zombie:getHumanVisual()
+    self._humanVisual = self._humanVisual or newVisual()
+    return self._humanVisual
+end
+
+function Zombie:getWornItems()
+    if not self._worn then
+        self._worn = ArrayList.new()
+        local visual = newVisual()
+        local item = { getVisual = function() return visual end }
+        self._worn:add({ getItem = function() return item end })
+    end
+    return self._worn
+end
+
+function Zombie:resetModelNextFrame() self._modelReset = (self._modelReset or 0) + 1 end
+
+-- Test helper: smear blood on everything, as being struck does.
+function Zombie:bloody()
+    self:getHumanVisual():setBlood("part0", 1)
+    self:getWornItems():get(0):getItem():getVisual():setBlood("part1", 1)
+end
+
+function Zombie:isBloody()
+    if self:getHumanVisual():getBlood("part0") > 0 then return true end
+    if self:getWornItems():get(0):getItem():getVisual():getBlood("part1") > 0 then return true end
+    return false
+end
+
+-- Losing the runtime half of the disguise, as a save and reload does. ModData
+-- survives; nothing else on the object does.
+function Zombie:forgetRuntimeState()
+    self._canWalk = nil
+    self._useless = nil
+    self._invulnerable = nil
+    self._noTeeth = nil
+    self._vars = {}
+    self._descriptor.voice = "zombie"
+    self._emitter.playing = true
+end
+
+Events.OnZombieUpdate = mkEvent()

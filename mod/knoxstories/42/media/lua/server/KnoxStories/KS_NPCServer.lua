@@ -48,6 +48,15 @@ function KS.NPCServer.isSpawned(npcId)
     return record ~= nil and record.spawned == true
 end
 
+function KS.NPCServer.recordSpawned(npcId, zombie)
+    npcState()[npcId] = {
+        spawned = true,
+        x = math.floor(zombie:getX()),
+        y = math.floor(zombie:getY()),
+        z = math.floor(zombie:getZ()),
+    }
+end
+
 function KS.NPCServer.clearSpawnRecords()
     local npcs = npcState()
     local cleared = 0
@@ -65,41 +74,31 @@ function KS.NPCServer.clearSpawnRecords()
 end
 
 --------------------------------------------------------------------------------
--- The disguise
---------------------------------------------------------------------------------
-
-local function disguise(zombie, def)
-    zombie:setCanWalk(false)
-    zombie:setUseless(true)
-    zombie:setInvulnerable(true)
-    zombie:setNoTeeth(true)
-
-    -- The lifted animation nodes are gated on this. Without it the model still
-    -- plays the zombie shamble no matter what else is set.
-    zombie:setVariable(KS.NPCs.ANIM_VARIABLE, true)
-
-    -- Silence. A groaning NPC is a zombie however it stands.
-    local descriptor = zombie:getDescriptor()
-    if descriptor then
-        descriptor:setVoicePrefix("")
-    end
-
-    local emitter = zombie:getEmitter()
-    if emitter then
-        emitter:stopAll()
-    end
-
-    zombie:clearAttachedItems()
-    zombie:resetEquippedHandsModels()
-
-    KS.NPCs.markAs(zombie, def.id)
-end
-
-KS.NPCServer.disguise = disguise
 
 --------------------------------------------------------------------------------
 -- Spawning
 --------------------------------------------------------------------------------
+
+-- Is this NPC already standing on the square? Only the tile is checked, which
+-- is where a persisted one would be -- a broader sweep would mean walking the
+-- whole cell on every spawn attempt.
+function KS.NPCServer.findExistingAt(npcId, x, y, z)
+    local cell = getCell()
+    local square = cell and cell:getGridSquare(x, y, z)
+    if not square then
+        return nil
+    end
+
+    local movingObjects = square:getMovingObjects()
+    for i = 0, movingObjects:size() - 1 do
+        local candidate = movingObjects:get(i)
+        if KS.NPCs.idOf(candidate) == npcId then
+            return candidate
+        end
+    end
+
+    return nil
+end
 
 -- payload: { npcId = "diane", x = , y = , z = }
 -- x/y/z is the square the client found, which may not be the NPC's nominal tile
@@ -117,6 +116,17 @@ local function spawnNPC(payload)
         -- Two clients can ask at once as a cell loads for both of them.
         KS.log("ignored SpawnNPC for '" .. def.id .. "': already spawned")
         return false
+    end
+
+    -- She may already be standing there. A zombie persists in its chunk, so
+    -- after a reload the original is still present -- tagged, but with the
+    -- disguise lapsed. Adopting her is the difference between one Diane and two.
+    local existing = KS.NPCServer.findExistingAt(def.id, payload.x, payload.y, payload.z)
+    if existing then
+        KS.NPCs.applyDisguise(existing, def)
+        KS.NPCServer.recordSpawned(def.id, existing)
+        KS.print("npc '" .. def.id .. "' was already there; re-dressed rather than duplicated")
+        return true
     end
 
     local zombies = addZombiesInOutfit(
@@ -142,7 +152,7 @@ local function spawnNPC(payload)
     -- Centre of the tile, so they do not stand in a wall.
     zombie:setPosition(payload.x + 0.5, payload.y + 0.5, payload.z)
 
-    disguise(zombie, def)
+    KS.NPCs.applyDisguise(zombie, def)
 
     npcState()[def.id] = {
         spawned = true,

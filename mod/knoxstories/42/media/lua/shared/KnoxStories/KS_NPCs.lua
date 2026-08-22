@@ -183,3 +183,89 @@ function KS.NPCs.defOf(zombie)
     local id = KS.NPCs.idOf(zombie)
     return id and KS.NPCs.get(id) or nil
 end
+
+--------------------------------------------------------------------------------
+-- Wearing the disguise
+--
+-- This is shared, not server-only, because it has to be applied in two places:
+-- once when the NPC is created, and again every time the game hands us back a
+-- zombie that is already tagged as one of ours.
+--
+-- The second case is the important one and it is not obvious. Only ModData
+-- survives a save: setCanWalk, setInvulnerable, the animation variable and the
+-- voice prefix are all runtime state on the zombie object. A zombie persists in
+-- its chunk, so after a reload Diane comes back still carrying her id and
+-- wearing her dress, with none of the behaviour that made her a person. She was
+-- a plain zombie in a long dress.
+--
+-- So applying the disguise has to be idempotent and cheap to repeat, and
+-- something has to notice when it has lapsed. See client/KS_NPCMaintain.lua.
+--------------------------------------------------------------------------------
+
+-- Blood shows through even on an invulnerable NPC: being struck marks the
+-- clothing and the body whether or not damage lands. A woman standing calmly in
+-- her kitchen covered in blood spatter reads as a zombie no matter how still she
+-- is, so it gets wiped.
+function KS.NPCs.cleanBlood(zombie)
+    if not BloodBodyPartType then
+        return
+    end
+
+    local visuals = {}
+
+    local humanVisual = zombie:getHumanVisual()
+    if humanVisual then
+        table.insert(visuals, humanVisual)
+    end
+
+    -- Worn clothing carries its own blood, separately from the body.
+    local worn = zombie:getWornItems()
+    if worn then
+        for i = 0, worn:size() - 1 do
+            local entry = worn:get(i)
+            local item = entry and entry:getItem()
+            local itemVisual = item and item:getVisual()
+            if itemVisual then
+                table.insert(visuals, itemVisual)
+            end
+        end
+    end
+
+    for i = 1, #visuals do
+        local visual = visuals[i]
+        for part = 1, BloodBodyPartType.MAX:index() do
+            local bodyPart = BloodBodyPartType.FromIndex(part - 1)
+            visual:setBlood(bodyPart, 0)
+            visual:setDirt(bodyPart, 0)
+        end
+    end
+
+    zombie:resetModelNextFrame()
+end
+
+function KS.NPCs.applyDisguise(zombie, def)
+    zombie:setCanWalk(false)
+    zombie:setUseless(true)
+    zombie:setInvulnerable(true)
+    zombie:setNoTeeth(true)
+
+    -- The lifted animation nodes are gated on this. Without it the model plays
+    -- the zombie shamble no matter what else is set.
+    zombie:setVariable(KS.NPCs.ANIM_VARIABLE, true)
+
+    local descriptor = zombie:getDescriptor()
+    if descriptor then
+        descriptor:setVoicePrefix("")
+    end
+
+    local emitter = zombie:getEmitter()
+    if emitter then
+        emitter:stopAll()
+    end
+
+    zombie:clearAttachedItems()
+    zombie:resetEquippedHandsModels()
+
+    KS.NPCs.cleanBlood(zombie)
+    KS.NPCs.markAs(zombie, def.id)
+end
