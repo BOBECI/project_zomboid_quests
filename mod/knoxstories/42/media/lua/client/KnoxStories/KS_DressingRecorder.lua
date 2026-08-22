@@ -189,8 +189,11 @@ end
 -- Export
 --
 -- Written as a Lua file in the same shape as notes/ and quests/, so finishing a
--- recording means copying one file into the mod. getFileWriter puts it in the
--- Zomboid folder, next to console.txt.
+-- recording means copying one file into the mod.
+--
+-- getFileWriter is sandboxed to the Lua subfolder of the user directory, NOT the
+-- user directory itself -- the file lands in Zomboid/Lua/, alongside the game's
+-- own layout.ini and emote.ini, not next to console.txt.
 --------------------------------------------------------------------------------
 
 -- The engine refuses to open a .lua file for writing. That is not documented
@@ -266,8 +269,8 @@ function KS.Recorder.finish()
 
     KS.print("exported '" .. set.id .. "': " .. #set.objects .. " object(s), "
         .. #set.items .. " item(s)")
-    KS.print("written to your Zomboid folder as " .. filename
-        .. " -- rename it to .lua before copying it into the mod")
+    KS.print("written to Zomboid/Lua/" .. filename)
+    KS.print("rename it to .lua, then copy it into the mod's dressing folder")
 
     session = nil
     return set

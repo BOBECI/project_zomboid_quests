@@ -9,7 +9,8 @@ Console file, where it's needed:
 C:\Users\malib\Zomboid\console.txt
 ```
 
-The recorder writes its export to that **same folder**, so keep it open.
+The recorder writes its export somewhere **else**, though — see Test 2. It is
+not next to `console.txt`.
 
 ---
 
@@ -42,7 +43,7 @@ is you making the data, and Test 3 is you proving it loads.
 ## Before you start
 
 ```
-[KnoxStories] v0.4.1 loaded - 4 quest(s), 3 note(s)
+[KnoxStories] v0.4.2 loaded - 4 quest(s), 3 note(s)
 ```
 
 Four quests now — `dummy_d` is the examine one. If it says three, `dummy_d` was
@@ -66,7 +67,7 @@ were going to `console.txt`.
 ### If you see nothing
 
 The readout is gated on the debug flag, which is on in this build. If it's
-missing, tell me — but check you're on v0.4.1 first.
+missing, tell me — but check you're on v0.4.2 first.
 
 ### If it's in an awkward place or hard to read
 
@@ -118,14 +119,23 @@ export`**.
 
 ```
 [KnoxStories] exported 'house_8241_11503': 1 object(s), 3 item(s)
-[KnoxStories] written to your Zomboid folder as KnoxStories_house_8241_11503.txt -- rename it to .lua before copying it into the mod
+[KnoxStories] written to Zomboid/Lua/KnoxStories_house_8241_11503.txt
+[KnoxStories] rename it to .lua, then copy it into the mod's dressing folder
 ```
 
 The counts should match what you placed. The orange readout goes back to normal.
 
-### Now open the file
+### Now open the file — note the folder
 
-It's in `C:\Users\malib\Zomboid\`. It should look like the mod's own data files:
+```
+C:\Users\malib\Zomboid\Lua\
+```
+
+**The `Lua` subfolder, not the Zomboid root, and not next to `console.txt`.**
+That is where the engine sandboxes mod file writes — it is the same place the
+game keeps its own `layout.ini` and `emote.ini`.
+
+It should look like the mod's own data files:
 
 ```lua
 table.insert(KnoxStories.DressingSets, {
