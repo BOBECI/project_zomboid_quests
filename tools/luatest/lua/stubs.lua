@@ -514,7 +514,10 @@ function Zombie:clearAttachedItems() self._attached = false end
 function Zombie:resetEquippedHandsModels() self._handModels = false end
 function Zombie:getDescriptor()
     local d = self._descriptor
-    return { setVoicePrefix = function(_, v) d.voice = v end }
+    return {
+        setVoicePrefix = function(_, v) d.voice = v end,
+        getVoicePrefix = function() return d.voice end,
+    }
 end
 function Zombie:getEmitter()
     local e = self._emitter
@@ -675,3 +678,9 @@ function Zombie:forgetRuntimeState()
 end
 
 Events.OnZombieUpdate = mkEvent()
+
+-- Getters the read-back diagnostic uses. Deliberately partial: isCanWalk and
+-- getOutfitName are guesses at API names, so the stub not having them is the
+-- honest model -- readBack must print "?" rather than fall over.
+function Zombie:isUseless() return self._useless == true end
+function Zombie:isInvulnerable() return self._invulnerable == true end

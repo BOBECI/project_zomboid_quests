@@ -207,6 +207,11 @@ end
 -- her kitchen covered in blood spatter reads as a zombie no matter how still she
 -- is, so it gets wiped.
 function KS.NPCs.cleanBlood(zombie)
+    -- The model refresh used to live at the end of this function, behind this
+    -- guard. If BloodBodyPartType was unavailable the function returned here and
+    -- the refresh never ran -- so setSkinTextureName was applied to the visual
+    -- and never reached what is actually drawn. She kept a zombie's face while
+    -- every setter reported success. The refresh is applyDisguise's job now.
     if not BloodBodyPartType then
         return
     end
@@ -239,8 +244,6 @@ function KS.NPCs.cleanBlood(zombie)
             visual:setDirt(bodyPart, 0)
         end
     end
-
-    zombie:resetModelNextFrame()
 end
 
 -- The face.
@@ -287,4 +290,60 @@ function KS.NPCs.applyDisguise(zombie, def)
 
     KS.NPCs.cleanBlood(zombie)
     KS.NPCs.markAs(zombie, def.id)
+
+    -- Unconditional, and last. Everything above writes to the visual object;
+    -- this is what pushes those writes into the model that actually gets drawn.
+    -- It used to sit at the end of cleanBlood, behind an early return -- so when
+    -- BloodBodyPartType was unavailable, every setter succeeded and nothing on
+    -- screen changed. She kept a corpse's face while the code reported success.
+    zombie:resetModelNextFrame()
+end
+
+--------------------------------------------------------------------------------
+-- Reading the disguise back
+--
+-- Every setter in applyDisguise reported success while Diane stayed a zombie, so
+-- "we called it" is not evidence of anything. This reads the state back off the
+-- zombie and says what is actually there.
+--
+-- Each read is guarded individually and reports "?" when the getter does not
+-- exist. That is diagnostic in itself: a column of "?" means the API name is
+-- wrong, which is a different problem from a value that will not stick.
+--------------------------------------------------------------------------------
+
+local function read(fn)
+    local ok, value = pcall(fn)
+
+    if not ok then
+        return "?"
+    end
+    if value == nil then
+        return "nil"
+    end
+    return tostring(value)
+end
+
+function KS.NPCs.readBack(zombie)
+    local skin = read(function()
+        local visual = zombie:getHumanVisual()
+        if not visual then
+            return nil
+        end
+        -- Two spellings; the reference mod uses the first.
+        local ok, name = pcall(function() return visual:getSkinTexture() end)
+        if ok and name then
+            return name
+        end
+        return visual:getSkinTextureName()
+    end)
+
+    return table.concat({
+        "skin=" .. skin,
+        "animVar=" .. read(function() return zombie:getVariable(KS.NPCs.ANIM_VARIABLE) end),
+        "canWalk=" .. read(function() return zombie:isCanWalk() end),
+        "useless=" .. read(function() return zombie:isUseless() end),
+        "invuln=" .. read(function() return zombie:isInvulnerable() end),
+        "voice=" .. read(function() return zombie:getDescriptor():getVoicePrefix() end),
+        "outfit=" .. read(function() return zombie:getDescriptor():getOutfitName() end),
+    }, " ")
 end

@@ -51,8 +51,13 @@ local TICKS_PER_SWEEP = 15
 -- uid -> how many updates we have seen for that zombie. Deliberately not
 -- persisted: after a reload every tagged zombie must be treated as brand new,
 -- which is exactly what an empty table gives us.
+-- How many read-back lines to print per NPC per spawn. Enough to see the value
+-- settle or fail to, without filling console.txt for the rest of the session.
+local REPORTS_PER_SPAWN = 12
+
 local seen = {}
 local sweepTicks = 0
+local reportsLeft = {}
 
 local function uidOf(zombie)
     local ok, uid = pcall(function() return zombie:getUID() end)
@@ -62,6 +67,7 @@ end
 function KS.NPCMaintain.forget()
     seen = {}
     sweepTicks = 0
+    reportsLeft = {}
 end
 
 local function onZombieUpdate(zombie)
@@ -97,7 +103,8 @@ local function onZombieUpdate(zombie)
         KS.NPCs.applyDisguise(zombie, def)
 
         if updates == 1 then
-            KS.log("dressing '" .. def.id .. "' -- will re-assert while the engine settles")
+            KS.log("dressing '" .. def.id .. "' -- before: " .. KS.NPCs.readBack(zombie))
+            reportsLeft[def.id] = REPORTS_PER_SPAWN
         end
 
         -- The world record is what stops a second copy of her being spawned on
@@ -148,11 +155,21 @@ local function sweep()
             -- A zombie whose cell has gone takes its object with it, so calling
             -- into a stale reference can fail. Dropping it is correct: the
             -- spawner will make a new one when the cell comes back.
-            local ok = pcall(KS.NPCs.applyDisguise, zombie, def)
+            local ok, err = pcall(KS.NPCs.applyDisguise, zombie, def)
 
             if not ok then
                 live[npcId] = nil
-                KS.log("lost the reference to '" .. npcId .. "'; it will respawn")
+                KS.log("lost the reference to '" .. npcId .. "': " .. tostring(err))
+            elseif KS.DEBUG then
+                -- Read it back rather than assuming the setters took. Every one
+                -- of them reported success while she stayed a zombie, so the
+                -- only useful evidence is what the object says afterwards.
+                reportsLeft[npcId] = (reportsLeft[npcId] or REPORTS_PER_SPAWN)
+
+                if reportsLeft[npcId] > 0 then
+                    reportsLeft[npcId] = reportsLeft[npcId] - 1
+                    KS.log("after dressing '" .. npcId .. "': " .. KS.NPCs.readBack(zombie))
+                end
             end
         end
     end

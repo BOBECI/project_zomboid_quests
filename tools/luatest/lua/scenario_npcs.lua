@@ -325,7 +325,42 @@ KS.NPCServer.live["diane"] = realRef
 
 Events.OnZombieUpdate = savedZombieEvent
 
-print("\n[55] a missing OnZombieUpdate must announce itself")
+print("\n[55] the model refresh is not hidden behind the blood guard")
+-- Found in play: every setter reported success and she kept a zombie's face.
+-- resetModelNextFrame lived at the end of cleanBlood, behind an early return --
+-- so with BloodBodyPartType unavailable the visual was written and never pushed
+-- to what is drawn.
+local savedBlood = BloodBodyPartType
+BloodBodyPartType = nil
+
+fresh:forgetRuntimeState()
+local resetsBefore = fresh._modelReset or 0
+KS.NPCs.applyDisguise(fresh, diane)
+
+check("the model is still refreshed without BloodBodyPartType",
+    (fresh._modelReset or 0) > resetsBefore, fresh._modelReset)
+check("and the face was still changed",
+    fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+
+BloodBodyPartType = savedBlood
+
+print("\n[56] the read-back reports what actually stuck")
+-- "We called the setter" turned out to be worthless evidence, so the diagnostic
+-- reads the state back off the zombie instead.
+KS.NPCs.applyDisguise(fresh, diane)
+local report = KS.NPCs.readBack(fresh)
+
+check("it names the skin", report:find("skin=FemaleBody") ~= nil, report)
+check("it reports the animation variable", report:find("animVar=true") ~= nil, report)
+check("it reports invulnerability", report:find("invuln=true") ~= nil, report)
+check("it reports the cleared voice", report:find("voice=") ~= nil, report)
+
+-- A getter that does not exist must show as "?" rather than break the sweep --
+-- a column of them is how we learn the API name is wrong.
+check("a missing getter shows as a question mark", report:find("canWalk=%?") ~= nil, report)
+check("reading back never throws", pcall(KS.NPCs.readBack, fresh) == true)
+
+print("\n[57] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
 -- files, so its existence cannot be confirmed by reading the install. If it is
 -- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and
