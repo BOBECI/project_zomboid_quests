@@ -35,6 +35,14 @@ local function onSpawnTriggerItems(player)
     KS.print("spawned a screwdriver")
 end
 
+-- KS.State only exists where the server tree is loaded, which in single-player
+-- is the same process. Phase 6 gives this a command of its own.
+local function onResetQuest(_, questId)
+    if KS.State then
+        KS.State.debugResetQuest(questId)
+    end
+end
+
 local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, test)
     if not KS.DEBUG then
         return
@@ -56,11 +64,21 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, te
     submenu:addOption("Spawn pen + paper", player, onSpawnMaterials)
     submenu:addOption("Spawn screwdriver", player, onSpawnTriggerItems)
 
-    local defs = KS.Notes.all()
-    for i = 1, #defs do
-        local def = defs[i]
+    local notes = KS.Notes.all()
+    for i = 1, #notes do
+        local def = notes[i]
         if not def.invalid then
             submenu:addOption("Spawn note: " .. def.id, player, onSpawnNote, def.id)
+        end
+    end
+
+    -- Walking a trigger chain twice needs a way back to the start that does not
+    -- involve a new save.
+    local quests = KS.Quests.all()
+    for i = 1, #quests do
+        local def = quests[i]
+        if not def.invalid then
+            submenu:addOption("Reset quest: " .. def.id, nil, onResetQuest, def.id)
         end
     end
 end

@@ -14,7 +14,7 @@ KnoxStories = KnoxStories or {}
 local KS = KnoxStories
 
 KS.MOD_ID = "knoxstories"
-KS.VERSION = "0.3.0"
+KS.VERSION = "0.3.1"
 
 -- Build plan, section 4: logging goes behind a flag from day one. The reference
 -- mod ships ~258 live print() calls; we are not repeating that.

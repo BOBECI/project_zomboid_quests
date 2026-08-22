@@ -89,6 +89,30 @@ function KS.State.getQuest(questId)
     return KS.State.ensure().quests[questId]
 end
 
+-- Testing only. Puts a quest back to its first step so a trigger chain can be
+-- walked again without starting a new save. Guarded on DEBUG because it writes
+-- world state without going through the command boundary, which nothing in the
+-- shipped mod is allowed to do.
+function KS.State.debugResetQuest(questId)
+    if not KS.DEBUG then
+        return false
+    end
+
+    local def = KS.Quests.get(questId)
+    if not def then
+        KS.warn("cannot reset '" .. tostring(questId) .. "': no quest has that id")
+        return false
+    end
+
+    KS.State.ensure().quests[questId] = {
+        status = KS.STATUS.ACTIVE,
+        step = def.firstStep,
+    }
+
+    KS.print("reset quest '" .. questId .. "' to step '" .. def.firstStep .. "'")
+    return true
+end
+
 --------------------------------------------------------------------------------
 -- The authoritative write
 --

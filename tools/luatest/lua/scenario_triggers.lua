@@ -200,6 +200,15 @@ check("   and the delivered note was taken", countSpec({ note = "dummy_scrap" })
     countSpec({ note = "dummy_scrap" }))
 check("   but the screwdriver was not", countSpec({ item = "Base.Screwdriver" }) == 1)
 
+print("\n[28] the debug reset, so a trigger chain can be walked twice")
+check("resetting an unknown quest is refused", KS.State.debugResetQuest("ghost") == false)
+check("reset puts dummy_c back to its first step",
+    KS.State.debugResetQuest("dummy_c") == true and where("dummy_c") == "active/arrive",
+    where("dummy_c"))
+KS.DEBUG = false
+check("reset does nothing with DEBUG off", KS.State.debugResetQuest("dummy_a") == false)
+KS.DEBUG = true
+
 print("")
 if FAILURES == 0 then
     print("ALL CHECKS PASSED")
