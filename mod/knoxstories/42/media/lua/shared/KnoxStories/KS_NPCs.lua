@@ -309,6 +309,13 @@ end
 -- Each read is guarded individually and reports "?" when the getter does not
 -- exist. That is diagnostic in itself: a column of "?" means the API name is
 -- wrong, which is a different problem from a value that will not stick.
+--
+-- Only getters confirmed to exist in play are listed. A pcall around a call to a
+-- method that is not there does NOT keep the console quiet -- Kahlua writes a
+-- full stack trace before the Lua side ever sees the error, exactly as it does
+-- for canBeWrite on a non-literature item. Probing speculatively from here runs
+-- four times a second, so a guess costs a stack trace every quarter second.
+-- getOutfitName was one such guess and has been removed.
 --------------------------------------------------------------------------------
 
 local function read(fn)
@@ -337,13 +344,19 @@ function KS.NPCs.readBack(zombie)
         return visual:getSkinTextureName()
     end)
 
+    -- getVariable hands back an AnimationVariableSlotBool, not a boolean, and
+    -- printing the object gives a class name and an address. Whether the slot
+    -- exists at all is the useful fact.
+    local animVar = read(function()
+        return zombie:getVariable(KS.NPCs.ANIM_VARIABLE) ~= nil and "set" or "unset"
+    end)
+
     return table.concat({
         "skin=" .. skin,
-        "animVar=" .. read(function() return zombie:getVariable(KS.NPCs.ANIM_VARIABLE) end),
+        "animVar=" .. animVar,
         "canWalk=" .. read(function() return zombie:isCanWalk() end),
         "useless=" .. read(function() return zombie:isUseless() end),
         "invuln=" .. read(function() return zombie:isInvulnerable() end),
         "voice=" .. read(function() return zombie:getDescriptor():getVoicePrefix() end),
-        "outfit=" .. read(function() return zombie:getDescriptor():getOutfitName() end),
     }, " ")
 end

@@ -351,13 +351,14 @@ KS.NPCs.applyDisguise(fresh, diane)
 local report = KS.NPCs.readBack(fresh)
 
 check("it names the skin", report:find("skin=FemaleBody") ~= nil, report)
-check("it reports the animation variable", report:find("animVar=true") ~= nil, report)
 check("it reports invulnerability", report:find("invuln=true") ~= nil, report)
 check("it reports the cleared voice", report:find("voice=") ~= nil, report)
 
 -- A getter that does not exist must show as "?" rather than break the sweep --
 -- a column of them is how we learn the API name is wrong.
 check("a missing getter shows as a question mark", report:find("canWalk=%?") ~= nil, report)
+check("the animation slot is reported as set, not as a Java object",
+    report:find("animVar=set") ~= nil, report)
 check("reading back never throws", pcall(KS.NPCs.readBack, fresh) == true)
 
 print("\n[57] a missing OnZombieUpdate must announce itself")
