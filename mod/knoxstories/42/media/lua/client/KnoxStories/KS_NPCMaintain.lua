@@ -70,6 +70,15 @@ local function uidOf(zombie)
     return ok and uid or nil
 end
 
+-- Forget one NPC, so the next zombie standing in for them is treated as brand
+-- new. Without this the counters from the previous body carry over: the settling
+-- window is long past, so the full re-dress only runs on the periodic beat, and
+-- the "first update" log that would have shown the problem never fires again.
+function KS.NPCMaintain.forgetNPC(npcId)
+    reportsLeft[npcId] = nil
+    driftReports[npcId] = nil
+end
+
 function KS.NPCMaintain.forget()
     seen = {}
     sweepTicks = 0

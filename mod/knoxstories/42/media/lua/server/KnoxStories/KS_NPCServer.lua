@@ -165,13 +165,22 @@ local function spawnNPC(payload)
 
     KS.NPCs.applyDisguise(zombie, def)
 
-    npcState()[def.id] = {
-        spawned = true,
-        x = payload.x, y = payload.y, z = payload.z,
-    }
+    -- Through recordSpawned, not by writing the table directly. Writing it here
+    -- set the world record but never the live reference, so the sweep had
+    -- nothing to maintain: she was dressed once at spawn and then left alone.
+    -- The first visit survived only because OnZombieUpdate happened to see her
+    -- and register her itself; on a second visit nothing did.
+    KS.NPCServer.recordSpawned(def.id, zombie)
+
+    -- Read back at the spawn site, unconditionally. The maintenance sweep also
+    -- logs, but only if it ever sees her -- and on a second visit it did not,
+    -- which was invisible because the only evidence was a line that did not
+    -- appear. One line per spawn, always, from the code that did the dressing.
+    local readOk, report = pcall(KS.NPCs.readBack, zombie, def)
 
     KS.print("npc '" .. def.id .. "' (" .. def.name .. ") spawned at "
-        .. payload.x .. "," .. payload.y .. "," .. payload.z)
+        .. payload.x .. "," .. payload.y .. "," .. payload.z
+        .. " -- " .. (readOk and report or "read-back failed"))
 
     return true
 end
@@ -194,6 +203,12 @@ local function forgetUnloadedNPCs()
 
             if not square then
                 record.spawned = false
+                KS.NPCServer.live[id] = nil
+
+                if KS.NPCMaintain then
+                    KS.NPCMaintain.forgetNPC(id)
+                end
+
                 KS.log("npc '" .. id .. "' unloaded with its cell; it may spawn again")
             end
         end

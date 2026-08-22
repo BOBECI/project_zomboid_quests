@@ -394,7 +394,52 @@ check("the face comes back with it",
 check("and the model is refreshed", (fresh._modelReset or 0) > resetsBefore)
 check("she is dressed again", KS.NPCs.isDisguised(fresh) == true)
 
-print("\n[58] a missing OnZombieUpdate must announce itself")
+print("\n[58] the second visit is treated like the first")
+-- Reported from play: she is correct on the first visit and a plain zombie on
+-- the second. The log showed the spawn line both times and the maintenance's
+-- "dressing" line only the first -- so on a respawn nothing was re-dressing her,
+-- and the evidence for it was a line that failed to appear.
+KS.NPCMaintain.forget()
+KS.NPCServer.clearSpawnRecords()
+KS.NPCServer.live = {}
+loadSquare(diane.x, diane.y, 0, true, true):clearMovingObjects()
+
+SPAWNED_ZOMBIES = {}
+Events.LoadGridsquare.fire(getCell():getGridSquare(diane.x, diane.y, 0))
+local firstVisit = SPAWNED_ZOMBIES[1]
+check("first visit spawns her", firstVisit ~= nil)
+check("and she is dressed", KS.NPCs.isDisguised(firstVisit, diane) == true)
+
+-- Walk away: the cell unloads and the record is dropped.
+LOADED_SQUARES = {}
+Events.EveryOneMinute.fire()
+check("unloading clears the record", KS.NPCServer.isSpawned("diane") == false)
+check("and drops the live reference", KS.NPCServer.live["diane"] == nil)
+LOADED_SQUARES = nil
+
+-- Come back. Nobody is standing there any more -- the old body went with the
+-- cell -- so a brand new zombie is created, and it must be dressed exactly as
+-- the first was.
+loadSquare(diane.x, diane.y, 0, true, true):clearMovingObjects()
+SPAWNED_ZOMBIES = {}
+Events.LoadGridsquare.fire(getCell():getGridSquare(diane.x, diane.y, 0))
+
+local secondVisit = SPAWNED_ZOMBIES[1]
+check("second visit spawns her too", secondVisit ~= nil)
+check("she is a different body", secondVisit ~= firstVisit)
+check("dressed at the spawn site", KS.NPCs.isDisguised(secondVisit, diane) == true)
+check("with a human face", secondVisit:skinName():find("FemaleBody") ~= nil,
+    secondVisit:skinName())
+check("and the maintenance holds a reference to her",
+    KS.NPCServer.live["diane"] == secondVisit)
+
+-- And the sweep must keep her dressed on the second visit as on the first.
+secondVisit:forgetRuntimeState()
+for _ = 1, 20 do Events.OnPlayerUpdate.fire(PLAYER) end
+check("the sweep re-dresses her on a second visit",
+    KS.NPCs.isDisguised(secondVisit, diane) == true)
+
+print("\n[59] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
 -- files, so its existence cannot be confirmed by reading the install. If it is
 -- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and

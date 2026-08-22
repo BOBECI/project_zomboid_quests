@@ -707,3 +707,7 @@ end
 -- The value, not the slot. This is what the reference mod guards on, and what
 -- distinguishes "still dressed" from "dressed once, then overwritten".
 function Zombie:getVariableBoolean(name) return self._vars[name] == true end
+
+-- Empty a square of everything standing on it, so a test can model arriving at a
+-- house where nobody is home.
+function Square:clearMovingObjects() self._moving = ArrayList.new() end
