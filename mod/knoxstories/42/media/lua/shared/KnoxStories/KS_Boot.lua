@@ -14,12 +14,15 @@ local KS = KnoxStories
 local function onGameStart()
     local validQuests, invalidQuests = KS.Quests.ensureValidated()
     local validNotes, invalidNotes = KS.Notes.ensureValidated()
+    local validNPCs, invalidNPCs = KS.NPCs.ensureValidated()
 
     KS.print("v" .. KS.VERSION .. " loaded - "
         .. validQuests .. " quest(s)"
         .. (invalidQuests > 0 and (" (" .. invalidQuests .. " skipped)") or "")
         .. ", " .. validNotes .. " note(s)"
-        .. (invalidNotes > 0 and (" (" .. invalidNotes .. " skipped)") or ""))
+        .. (invalidNotes > 0 and (" (" .. invalidNotes .. " skipped)") or "")
+        .. ", " .. validNPCs .. " npc(s)"
+        .. (invalidNPCs > 0 and (" (" .. invalidNPCs .. " skipped)") or ""))
 
     -- Absent on a multiplayer client until Phase 6 syncs a copy down.
     if not KS.State then

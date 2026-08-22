@@ -165,3 +165,24 @@ table.insert(KnoxStories.QuestDefs, {
         },
     },
 })
+
+--------------------------------------------------------------------------------
+-- Dummy E -- delivering to a person rather than to a patch of ground.
+--
+-- Phase 3's deliver_item worked against coordinates because there was nobody to
+-- deliver to. Naming an npc copies their coordinates in at load, so moving Diane
+-- moves the delivery with her.
+--------------------------------------------------------------------------------
+
+table.insert(KnoxStories.QuestDefs, {
+    id = "dummy_e",
+    name = "Dummy E (deliver to Diane)",
+    firstStep = "take_it_to_diane",
+    steps = {
+        {
+            id = "take_it_to_diane",
+            trigger = { type = "deliver_item", note = "dummy_letter", npc = "diane", range = 3 },
+            unlocks = nil,
+        },
+    },
+})

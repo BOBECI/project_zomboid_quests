@@ -22,7 +22,10 @@ table.insert(KnoxStories.NPCDefs, {
     id = "diane",
     name = "Diane",
     x = 8003, y = 11743, z = 0,
-    outfit = "Naked",
+    -- A vanilla outfit name from media/clothing/clothing.xml. "Naked" is a real
+    -- one and is what the reference mod uses in its example call; it is not what
+    -- you want a woman standing in her own kitchen to be wearing.
+    outfit = "DressLong",
     female = true,
     dialogue = {
         "You're the first person through that door in a while. "
