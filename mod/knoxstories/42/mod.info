@@ -1,0 +1,7 @@
+name=Knox County Stories
+id=knoxstories
+description=Co-op storyline quests for Project Zomboid. Quest state lives in the world rather than on any one player, and quest information is carried as physical notes.
+poster=poster.png
+author=Mehmet Ali
+modversion=0.1.0
+pzversion=42.0.0
