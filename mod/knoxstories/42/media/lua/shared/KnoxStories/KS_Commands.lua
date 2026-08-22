@@ -28,6 +28,7 @@ KS.Commands.MODULE = "KnoxStories"
 
 -- Command names.
 KS.Commands.ADVANCE_STEP = "AdvanceStep"
+KS.Commands.SPAWN_NPC = "SpawnNPC"
 
 -- name -> function(payload) -> true | false, plainLanguageReason
 KS.Commands.validators = KS.Commands.validators or {}
@@ -102,4 +103,37 @@ function KS.Commands.send(name, payload)
     end
 
     return handler(payload)
+end
+
+--------------------------------------------------------------------------------
+-- SpawnNPC
+--
+--   { npcId = "diane", x = 8003, y = 11743, z = 0 }
+--
+-- The coordinates are the square the client actually found, which may not be the
+-- NPC's nominal tile if that one was blocked. The server does not re-derive
+-- them, because only the client can see whether a square is currently free --
+-- but it does check the NPC exists and is not already standing somewhere.
+--------------------------------------------------------------------------------
+
+KS.Commands.validators[KS.Commands.SPAWN_NPC] = function(payload)
+    if type(payload) ~= "table" then
+        return false, "the payload is not a table"
+    end
+
+    if type(payload.npcId) ~= "string" or payload.npcId == "" then
+        return false, "npcId is missing or not a string"
+    end
+
+    if not KS.NPCs.get(payload.npcId) then
+        return false, "there is no npc with the id '" .. payload.npcId .. "'"
+    end
+
+    for _, key in ipairs({ "x", "y", "z" }) do
+        if type(payload[key]) ~= "number" then
+            return false, "'" .. key .. "' is missing or not a number"
+        end
+    end
+
+    return true
 end

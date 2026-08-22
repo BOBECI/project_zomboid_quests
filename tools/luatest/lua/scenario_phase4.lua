@@ -343,9 +343,3 @@ Events.OnPostUIDraw.fire()
 check("and draws nothing with the debug flag off", #DRAWN_STRINGS == 0, #DRAWN_STRINGS)
 KS.DEBUG = true
 
-print("")
-if FAILURES == 0 then
-    print("ALL CHECKS PASSED")
-else
-    print(FAILURES .. " CHECK(S) FAILED")
-end

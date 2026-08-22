@@ -27,6 +27,7 @@ const SCENARIOS = [
   { file: 'scenario_notes.lua', banner: 'RELOAD AGAIN: NOTES AND THE COPY RECIPE', reload: true },
   { file: 'scenario_triggers.lua', banner: 'RELOAD AGAIN: THE FOUR TRIGGER TYPES', reload: true },
   { file: 'scenario_phase4.lua', banner: 'RELOAD AGAIN: DRESSING, RECORDER, EXAMINE', reload: true },
+  { file: 'scenario_npcs.lua', banner: 'RELOAD AGAIN: NPCS, SPAWNING AND DIALOGUE', reload: true },
 ];
 
 function findLuaFiles(dir) {

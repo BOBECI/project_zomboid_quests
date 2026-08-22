@@ -483,3 +483,108 @@ function PLAYER:getPlayerNum() return self._playerNum or 0 end
 
 Core = { getMyDocumentFolder = function() return "C:/Users/test/Zomboid" end }
 function getFileSeparator() return "/" end
+
+--------------------------------------------------------------------------------
+-- Zombies, squares as places to stand, and the dialogue window
+--------------------------------------------------------------------------------
+
+local Zombie = {}
+Zombie.__index = Zombie
+
+function Zombie.new(x, y, z, outfit, female)
+    return setmetatable({
+        _x = x, _y = y, _z = z, _outfit = outfit, _female = female,
+        _modData = {}, _vars = {}, _attached = true, _handModels = true,
+        _descriptor = { voice = "zombie" }, _emitter = { playing = true },
+    }, Zombie)
+end
+
+function Zombie:getX() return self._x end
+function Zombie:getY() return self._y end
+function Zombie:getZ() return self._z end
+function Zombie:setPosition(x, y, z) self._x, self._y, self._z = x, y, z end
+function Zombie:getModData() return self._modData end
+function Zombie:setCanWalk(b) self._canWalk = b end
+function Zombie:setUseless(b) self._useless = b end
+function Zombie:setInvulnerable(b) self._invulnerable = b end
+function Zombie:setNoTeeth(b) self._noTeeth = b end
+function Zombie:setVariable(name, value) self._vars[name] = value end
+function Zombie:getVariable(name) return self._vars[name] end
+function Zombie:clearAttachedItems() self._attached = false end
+function Zombie:resetEquippedHandsModels() self._handModels = false end
+function Zombie:getDescriptor()
+    local d = self._descriptor
+    return { setVoicePrefix = function(_, v) d.voice = v end }
+end
+function Zombie:getEmitter()
+    local e = self._emitter
+    return { stopAll = function() e.playing = false end }
+end
+_G.TestZombie = Zombie
+
+-- addZombiesInOutfit is the vanilla spawner the disguise is built on top of.
+SPAWNED_ZOMBIES = {}
+ADD_ZOMBIES_FAILS = false
+
+function addZombiesInOutfit(x, y, z, count, outfit, femaleChance, ...)
+    if ADD_ZOMBIES_FAILS then
+        return nil
+    end
+
+    local zombie = Zombie.new(x, y, z, outfit, femaleChance == 100)
+    table.insert(SPAWNED_ZOMBIES, zombie)
+
+    local list = ArrayList.new()
+    list:add(zombie)
+    return list
+end
+
+-- Squares report whether something can stand on them, and who is standing there.
+function Square:setStandable(solid, free)
+    self._solid = solid
+    self._free = free
+end
+function Square:isSolidFloor() return self._solid == true end
+function Square:isFree(_) return self._free == true end
+function Square:getMovingObjects()
+    self._moving = self._moving or ArrayList.new()
+    return self._moving
+end
+function Square:addMovingObject(o) self:getMovingObjects():add(o) end
+function Square:transmitRemoveItemFromSquare(o) self._objects:remove(o) end
+
+-- Everything a square in a loaded cell can do; getGridSquare returns nil for
+-- anything outside the loaded set so the spawner's guards get exercised.
+LOADED_SQUARES = nil
+
+local plainGetGridSquare = Cell.getGridSquare
+function Cell:getGridSquare(x, y, z)
+    if LOADED_SQUARES and not LOADED_SQUARES[x .. "," .. y .. "," .. z] then
+        return nil
+    end
+    return plainGetGridSquare(self, x, y, z)
+end
+
+DIALOGUE_SHOWN = {}
+ISModalRichText = {}
+function ISModalRichText:new(x, y, w, h, text, yesno, target, onclick, player)
+    local o = setmetatable({ text = text, player = player }, { __index = self })
+    return o
+end
+function ISModalRichText:initialise() self.initialised = true end
+function ISModalRichText:addToUIManager() table.insert(DIALOGUE_SHOWN, self.text) end
+function ISModalRichText:destroy() self.destroyed = true end
+
+Events.EveryOneMinute = mkEvent()
+
+-- OnFillWorldObjectContextMenu hands over IsoObjects, not squares, and the mod
+-- reaches the square through them. Modelled so the test cannot take a shortcut
+-- the game would not offer.
+function WorldObject:getSquare() return self._square end
+
+function Square:makeObject(spriteName)
+    local object = WorldObject.new(spriteName)
+    object._square = self
+    self._objects:add(object)
+    return object
+end
