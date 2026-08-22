@@ -48,6 +48,10 @@ local REASSERT_EVERY = 30
 
 local TICKS_PER_SWEEP = 15
 
+-- Sweeps between heartbeat lines. 20 sweeps at 15 ticks each is roughly every
+-- five seconds: often enough to be useful, rare enough not to drown the log.
+local SWEEPS_PER_HEARTBEAT = 20
+
 -- uid -> how many updates we have seen for that zombie. Deliberately not
 -- persisted: after a reload every tagged zombie must be treated as brand new,
 -- which is exactly what an empty table gives us.
@@ -64,6 +68,7 @@ local seen = {}
 local sweepTicks = 0
 local reportsLeft = {}
 local driftReports = {}
+local heartbeats = 0
 
 local function uidOf(zombie)
     local ok, uid = pcall(function() return zombie:getUID() end)
@@ -84,6 +89,7 @@ function KS.NPCMaintain.forget()
     sweepTicks = 0
     reportsLeft = {}
     driftReports = {}
+    heartbeats = 0
 end
 
 local function onZombieUpdate(zombie)
@@ -214,6 +220,45 @@ local function sweep()
     end
 end
 
+-- A heartbeat, because the failure mode we keep hitting is silence.
+--
+-- Every diagnostic so far has reported on work the sweep did. When the sweep is
+-- not running, or is running over an empty table, it says nothing at all -- and
+-- "no line appeared" has now been misread twice as "nothing to see". This says
+-- something either way, every few seconds, whether or not there is anything to
+-- maintain.
+local function heartbeat()
+    if not KS.DEBUG then
+        return
+    end
+
+    heartbeats = heartbeats + 1
+    if heartbeats < SWEEPS_PER_HEARTBEAT then
+        return
+    end
+    heartbeats = 0
+
+    local live = KS.NPCServer and KS.NPCServer.live
+
+    if not live then
+        KS.log("sweep: KS.NPCServer.live does not exist -- nothing can be maintained")
+        return
+    end
+
+    local parts = {}
+    for npcId, zombie in pairs(live) do
+        local def = KS.NPCs.get(npcId)
+        local ok, dressed = pcall(KS.NPCs.isDisguised, zombie, def)
+        table.insert(parts, npcId .. "=" .. (ok and tostring(dressed) or "unreadable"))
+    end
+
+    if #parts == 0 then
+        KS.log("sweep: running, but holding nobody -- no npc reference to maintain")
+    else
+        KS.log("sweep: maintaining " .. table.concat(parts, " "))
+    end
+end
+
 local function onPlayerUpdate()
     sweepTicks = sweepTicks + 1
 
@@ -223,6 +268,7 @@ local function onPlayerUpdate()
     sweepTicks = 0
 
     sweep()
+    heartbeat()
 end
 
 KS.NPCMaintain.sweep = sweep
