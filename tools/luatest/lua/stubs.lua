@@ -532,6 +532,7 @@ function addZombiesInOutfit(x, y, z, count, outfit, femaleChance, ...)
     end
 
     local zombie = Zombie.new(x, y, z, outfit, femaleChance == 100)
+    zombie:zombieSkin()
     table.insert(SPAWNED_ZOMBIES, zombie)
 
     local list = ArrayList.new()
@@ -600,8 +601,11 @@ BloodBodyPartType = {
 
 local function newVisual()
     local blood, dirt = {}, {}
+    local state = { skin = nil }
     return {
-        _blood = blood, _dirt = dirt,
+        _blood = blood, _dirt = dirt, _state = state,
+        setSkinTextureName = function(_, name) state.skin = name end,
+        getSkinTextureName = function() return state.skin end,
         setBlood = function(_, part, v) blood[part] = v end,
         getBlood = function(_, part) return blood[part] or 0 end,
         setDirt = function(_, part, v) dirt[part] = v end,
@@ -648,6 +652,15 @@ function Zombie:isBloody()
     return false
 end
 
+-- addZombiesInOutfit hands back a ZOMBIE, so its skin texture is a zombie one.
+-- Modelled so a disguise that forgets the face fails here.
+function Zombie:zombieSkin()
+    self:getHumanVisual():setSkinTextureName(self._female and "F_ZedBody01_level1"
+        or "M_ZedBody01_level1")
+end
+
+function Zombie:skinName() return self:getHumanVisual():getSkinTextureName() end
+
 -- Losing the runtime half of the disguise, as a save and reload does. ModData
 -- survives; nothing else on the object does.
 function Zombie:forgetRuntimeState()
@@ -658,6 +671,7 @@ function Zombie:forgetRuntimeState()
     self._vars = {}
     self._descriptor.voice = "zombie"
     self._emitter.playing = true
+    self:zombieSkin()
 end
 
 Events.OnZombieUpdate = mkEvent()

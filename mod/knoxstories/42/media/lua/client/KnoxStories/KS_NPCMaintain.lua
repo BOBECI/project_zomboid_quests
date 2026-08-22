@@ -34,15 +34,18 @@ local KS = KnoxStories
 
 KS.NPCMaintain = KS.NPCMaintain or {}
 
--- Roughly twice a second per NPC, which is often enough that a hit is cleaned
--- before the player has really registered it.
-local UPDATES_PER_BLOOD_CLEAN = 30
+-- Re-assert every tick for this many updates after first sight, which covers the
+-- window in which the engine is still building the zombie and overwriting us.
+local SETTLE_UPDATES = 10
 
--- uid -> true for zombies disguised during this session. Deliberately not
--- persisted: after a reload every tagged zombie must be treated as lapsed,
+-- After that, roughly twice a second forever. This is also what keeps blood off
+-- her: applying the disguise cleans it, and being struck is not a one-off event.
+local REASSERT_EVERY = 30
+
+-- uid -> how many updates we have seen for that zombie. Deliberately not
+-- persisted: after a reload every tagged zombie must be treated as brand new,
 -- which is exactly what an empty table gives us.
-local disguised = {}
-local sinceClean = {}
+local seen = {}
 
 local function uidOf(zombie)
     local ok, uid = pcall(function() return zombie:getUID() end)
@@ -50,8 +53,7 @@ local function uidOf(zombie)
 end
 
 function KS.NPCMaintain.forget()
-    disguised = {}
-    sinceClean = {}
+    seen = {}
 end
 
 local function onZombieUpdate(zombie)
@@ -65,29 +67,36 @@ local function onZombieUpdate(zombie)
         return
     end
 
-    if not disguised[uid] then
-        disguised[uid] = true
-        sinceClean[uid] = 0
+    local updates = (seen[uid] or 0) + 1
+    seen[uid] = updates
 
+    -- Applying the disguise once is not enough, and this was the bug: she spawned
+    -- correctly and was a plain zombie a moment later.
+    --
+    -- The engine is still assembling a freshly created zombie for the first few
+    -- ticks -- descriptor, visuals, AI state -- and overwrites whatever was set
+    -- before it finished. The reference mod works around the same thing by
+    -- refusing to touch a new zombie for its first two updates.
+    --
+    -- Waiting a fixed number of ticks is a guess about engine timing, so instead
+    -- this re-asserts every tick until it has clearly settled, then keeps
+    -- checking periodically for the rest of her life. Applying is a handful of
+    -- setters; there is one of her.
+    local settling = updates <= SETTLE_UPDATES
+    local periodic = (updates % REASSERT_EVERY) == 0
+
+    if settling or periodic then
         KS.NPCs.applyDisguise(zombie, def)
-        KS.log("re-applied the disguise to '" .. def.id .. "' after a reload")
+
+        if updates == 1 then
+            KS.log("dressing '" .. def.id .. "' -- will re-assert while the engine settles")
+        end
 
         -- The world record is what stops a second copy of her being spawned on
         -- top of this one. She exists; say so.
         if KS.NPCServer then
             KS.NPCServer.recordSpawned(def.id, zombie)
         end
-
-        return
-    end
-
-    local count = (sinceClean[uid] or 0) + 1
-
-    if count >= UPDATES_PER_BLOOD_CLEAN then
-        sinceClean[uid] = 0
-        KS.NPCs.cleanBlood(zombie)
-    else
-        sinceClean[uid] = count
     end
 end
 

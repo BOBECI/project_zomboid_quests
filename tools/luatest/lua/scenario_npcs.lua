@@ -232,7 +232,55 @@ if parent and parent.subMenu then
     end
 end
 
-print("\n[52] a missing OnZombieUpdate must announce itself")
+print("\n[52] she has a human face, not a zombie one")
+-- Found in play: "she appears as a plain zombie, face and behaviour both."
+-- addZombiesInOutfit hands back a zombie, and a zombie's skin texture is a
+-- zombie's. No amount of behaviour suppression changes what she looks like.
+KS.NPCServer.clearSpawnRecords()
+KS.NPCMaintain.forget()
+loadSquare(diane.x, diane.y, 0, true, true)
+SPAWNED_ZOMBIES = {}
+Events.LoadGridsquare.fire(getCell():getGridSquare(diane.x, diane.y, 0))
+
+local fresh = SPAWNED_ZOMBIES[1]
+    or KS.NPCServer.findExistingAt("diane", diane.x, diane.y, 0)
+check("she exists", fresh ~= nil)
+check("her face is not a corpse's",
+    fresh:skinName():find("Zed") == nil, fresh:skinName())
+check("it is a female human body texture",
+    fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+
+print("\n[53] the disguise survives the engine overwriting it")
+-- The other half of the same report. The engine is still assembling a freshly
+-- created zombie for the first few ticks and overwrites whatever was set before
+-- it finished, so applying the disguise once -- at spawn, or on first sight --
+-- is not enough. It has to be re-asserted until it sticks.
+KS.NPCMaintain.forget()
+
+-- Tick once so she is known, then let the engine stamp all over her, exactly as
+-- it does while it finishes building the object.
+Events.OnZombieUpdate.fire(fresh)
+fresh:forgetRuntimeState()
+
+check("the engine wiped her", fresh._canWalk == nil and fresh:skinName():find("Zed") ~= nil)
+
+Events.OnZombieUpdate.fire(fresh)
+
+check("the next tick puts her back", fresh._canWalk == false)
+check("face included", fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+check("silent again", fresh._descriptor.voice == "")
+
+-- And it must keep holding long after the settling window, because being hit
+-- bloodies her and nothing else is watching.
+for _ = 1, 200 do Events.OnZombieUpdate.fire(fresh) end
+fresh:forgetRuntimeState()
+fresh:bloody()
+for _ = 1, 40 do Events.OnZombieUpdate.fire(fresh) end
+
+check("it is still re-asserted much later", fresh._canWalk == false)
+check("and blood is still cleaned", fresh:isBloody() == false)
+
+print("\n[54] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
 -- files, so its existence cannot be confirmed by reading the install. If it is
 -- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and

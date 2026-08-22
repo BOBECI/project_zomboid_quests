@@ -243,7 +243,26 @@ function KS.NPCs.cleanBlood(zombie)
     zombie:resetModelNextFrame()
 end
 
+-- The face.
+--
+-- addZombiesInOutfit hands back a zombie, and a zombie's skin texture is a
+-- zombie's skin texture -- F_ZedBody01_level1 and friends. No amount of
+-- behaviour suppression changes what she looks like. The reference mod
+-- overwrites it with a human body texture and so must we, or she stands
+-- perfectly still, silently, with a corpse's face.
+local function applyHumanSkin(zombie, def)
+    local visual = zombie:getHumanVisual()
+    if not visual then
+        return
+    end
+
+    local body = def.female and "FemaleBody0" or "MaleBody0"
+    visual:setSkinTextureName(body .. tostring(def.skinTexture or 1))
+end
+
 function KS.NPCs.applyDisguise(zombie, def)
+    applyHumanSkin(zombie, def)
+
     zombie:setCanWalk(false)
     zombie:setUseless(true)
     zombie:setInvulnerable(true)
