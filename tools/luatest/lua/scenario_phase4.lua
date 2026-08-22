@@ -104,14 +104,28 @@ check("captured objects carry their coordinates",
 check("captured item carries its type", set.items[1].item == "Base.TinCanEmpty",
     set.items[1].item)
 
-local written = WRITTEN_FILES["KnoxStories_dressing_test_set.lua"]
-check("a file was written", written ~= nil and #written > 0)
+-- The engine will not open a .lua file for writing, so the exporter falls back
+-- through a list of extensions. .txt is the first it should land on.
+check("nothing was written as .lua", WRITTEN_FILES["KnoxStories_test_set.lua"] == nil)
+local written = WRITTEN_FILES["KnoxStories_test_set.txt"]
+check("a file was written as .txt instead", written ~= nil and #written > 0)
+check("and it says to rename it", written and written:find("RENAME THIS FILE") ~= nil)
 check("it registers a dressing set", written:find("KnoxStories.DressingSets") ~= nil)
 check("it contains the placed sprite", written:find("furniture_tables_01_1") ~= nil)
 check("it does not contain the vanilla wall",
     written:find("walls_exterior_house_01_0") == nil)
 
 check("finishing with nothing recording returns nothing", KS.Recorder.finish() == nil)
+
+-- A failed export must not throw the recording away: re-dressing a house because
+-- a file would not open is the worst possible outcome here.
+FILE_WRITER_BLOCKED = { [".txt"] = true, [".ini"] = true, [".log"] = true,
+                        [".cfg"] = true, [".lua"] = true }
+KS.Recorder.start(PLAYER, "doomed", 1)
+check("an export that cannot write returns nothing", KS.Recorder.finish() == nil)
+check("but keeps the recording so it can be retried", KS.Recorder.isRecording() == true)
+FILE_WRITER_BLOCKED = { [".lua"] = true }
+check("and retrying then works", KS.Recorder.finish() ~= nil)
 check("recording obeys the debug flag", (function()
     KS.DEBUG = false
     local started = KS.Recorder.start(PLAYER, "nope", 1)

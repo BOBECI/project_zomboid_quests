@@ -54,7 +54,7 @@ end
 --------------------------------------------------------------------------------
 
 local function onStartRecording(player)
-    local setId = string.format("dressing_%d_%d",
+    local setId = string.format("house_%d_%d",
         math.floor(player:getX()), math.floor(player:getY()))
     KS.Recorder.start(player, setId)
 end

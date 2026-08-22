@@ -356,7 +356,19 @@ _G.TestSquare = Square
 --------------------------------------------------------------------------------
 
 WRITTEN_FILES = {}
+
+-- Extensions the engine refuses to open for writing. Modelled as configurable
+-- rather than hard-coded, because the exporter is tested on "falls through to
+-- one that works", not on which particular extension this build blocks.
+FILE_WRITER_BLOCKED = { [".lua"] = true }
+
 function getFileWriter(name, _, _)
+    for ext in pairs(FILE_WRITER_BLOCKED) do
+        if name:sub(-#ext) == ext then
+            return nil
+        end
+    end
+
     WRITTEN_FILES[name] = ""
     return {
         write = function(_, text) WRITTEN_FILES[name] = WRITTEN_FILES[name] .. text end,

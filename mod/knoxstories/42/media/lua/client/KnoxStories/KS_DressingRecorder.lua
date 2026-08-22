@@ -193,6 +193,32 @@ end
 -- Zomboid folder, next to console.txt.
 --------------------------------------------------------------------------------
 
+-- The engine refuses to open a .lua file for writing. That is not documented
+-- anywhere, but it is consistent with the game's own code: every getFileWriter
+-- call in media/lua uses .txt, .ini, .log or .cfg, and never .lua. Writing
+-- executable Lua into the user folder is an obvious thing to refuse.
+--
+-- So the export is a .txt containing Lua, and you rename it when you copy it in.
+-- The list is tried in order rather than hard-coded to .txt so that a build which
+-- allows more, or fewer, still produces a file -- and the log says which one
+-- worked.
+local EXPORT_EXTENSIONS = { ".txt", ".ini", ".log", ".cfg", ".lua" }
+
+local function openExport(baseName)
+    for i = 1, #EXPORT_EXTENSIONS do
+        local filename = baseName .. EXPORT_EXTENSIONS[i]
+        local writer = getFileWriter(filename, true, false)
+
+        if writer then
+            return writer, filename
+        end
+
+        KS.log("the game refused to open " .. filename .. ", trying the next extension")
+    end
+
+    return nil
+end
+
 local function writePlacements(writer, listName, list, field)
     writer:write("    " .. listName .. " = {\r\n")
     for i = 1, #list do
@@ -210,17 +236,20 @@ function KS.Recorder.finish()
     end
 
     local set = buildSet()
-    local filename = "KnoxStories_dressing_" .. set.id .. ".lua"
 
-    local writer = getFileWriter(filename, true, false)
+    local writer, filename = openExport("KnoxStories_" .. set.id)
     if not writer then
-        KS.warn("could not open " .. filename .. " for writing")
-        session = nil
+        KS.warn("the game refused to open a file for writing under every extension tried."
+            .. " Nothing was exported, and the recording has been kept -- try Finish again.")
         return nil
     end
 
     writer:write("-- Recorded in game by the KnoxStories dressing recorder.\r\n")
-    writer:write("-- Copy into mod/knoxstories/42/media/lua/shared/KnoxStories/dressing/\r\n")
+    writer:write("--\r\n")
+    writer:write("-- RENAME THIS FILE TO .lua, then copy it into\r\n")
+    writer:write("-- mod/knoxstories/42/media/lua/shared/KnoxStories/dressing/\r\n")
+    writer:write("-- It is written as .txt because the game will not open a .lua\r\n")
+    writer:write("-- file for writing.\r\n")
     writer:write("--\r\n")
     writer:write("-- Contains only what was added during the recording, never the\r\n")
     writer:write("-- building itself, so it stays valid across map updates.\r\n\r\n")
@@ -237,7 +266,8 @@ function KS.Recorder.finish()
 
     KS.print("exported '" .. set.id .. "': " .. #set.objects .. " object(s), "
         .. #set.items .. " item(s)")
-    KS.print("written to your Zomboid folder as " .. filename)
+    KS.print("written to your Zomboid folder as " .. filename
+        .. " -- rename it to .lua before copying it into the mod")
 
     session = nil
     return set

@@ -42,7 +42,7 @@ is you making the data, and Test 3 is you proving it loads.
 ## Before you start
 
 ```
-[KnoxStories] v0.4.0 loaded - 4 quest(s), 3 note(s)
+[KnoxStories] v0.4.1 loaded - 4 quest(s), 3 note(s)
 ```
 
 Four quests now — `dummy_d` is the examine one. If it says three, `dummy_d` was
@@ -66,7 +66,7 @@ were going to `console.txt`.
 ### If you see nothing
 
 The readout is gated on the debug flag, which is on in this build. If it's
-missing, tell me — but check you're on v0.4.0 first.
+missing, tell me — but check you're on v0.4.1 first.
 
 ### If it's in an awkward place or hard to read
 
@@ -90,10 +90,10 @@ This is the workflow: dress a house in game rather than typing coordinates.
 ### You should see
 
 The coordinate readout turns **orange**, and a second line appears under it
-saying `recording 'dressing_<x>_<y>'`. In the console:
+saying `recording 'house_<x>_<y>'`. In the console:
 
 ```
-[KnoxStories] recording 'dressing_8241_11503' over x 8226-8256, y 11488-11518, floors 0-1
+[KnoxStories] recording 'house_8241_11503' over x 8226-8256, y 11488-11518, floors 0-1
 [KnoxStories] place your objects, then use Finish recording. Stay inside that box.
 ```
 
@@ -117,8 +117,8 @@ export`**.
 ### You should see
 
 ```
-[KnoxStories] exported 'dressing_8241_11503': 1 object(s), 3 item(s)
-[KnoxStories] written to your Zomboid folder as KnoxStories_dressing_dressing_8241_11503.lua
+[KnoxStories] exported 'house_8241_11503': 1 object(s), 3 item(s)
+[KnoxStories] written to your Zomboid folder as KnoxStories_house_8241_11503.txt -- rename it to .lua before copying it into the mod
 ```
 
 The counts should match what you placed. The orange readout goes back to normal.
@@ -129,7 +129,7 @@ It's in `C:\Users\malib\Zomboid\`. It should look like the mod's own data files:
 
 ```lua
 table.insert(KnoxStories.DressingSets, {
-    id = "dressing_8241_11503",
+    id = "house_8241_11503",
     area = { x1 = 8226, y1 = 11488, x2 = 8256, y2 = 11518, z1 = 0, z2 = 1 },
     objects = {
         { x = 8241, y = 11502, z = 0, sprite = "furniture_tables_01_1" },
@@ -171,8 +171,12 @@ Proves the recorded file actually dresses the world.
 
 ### Do this
 
-1. Copy your exported file into:
+1. **Rename the exported file from `.txt` to `.lua`**, then copy it into:
    `mod\knoxstories\42\media\lua\shared\KnoxStories\dressing\`
+
+   > It exports as `.txt` because the game refuses to open a `.lua` file for
+   > writing. The contents are already Lua; only the extension changes.
+
 2. **Delete the things you placed** from the world, so you can tell whether they
    come back.
 3. Fully restart the game.
@@ -183,7 +187,7 @@ Proves the recorded file actually dresses the world.
 Your objects and items back where you put them, and in the console:
 
 ```
-[KnoxStories] dressed 8241,11502,0 with 2 thing(s) from 'dressing_8241_11503'
+[KnoxStories] dressed 8241,11502,0 with 2 thing(s) from 'house_8241_11503'
 ```
 
 One such line per square that had something on it.
