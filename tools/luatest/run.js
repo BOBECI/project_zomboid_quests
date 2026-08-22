@@ -27,7 +27,20 @@ const SCENARIOS = [
   { file: 'scenario_notes.lua', banner: 'RELOAD AGAIN: NOTES AND THE COPY RECIPE', reload: true },
   { file: 'scenario_triggers.lua', banner: 'RELOAD AGAIN: THE FOUR TRIGGER TYPES', reload: true },
   { file: 'scenario_phase4.lua', banner: 'RELOAD AGAIN: DRESSING, RECORDER, EXAMINE', reload: true },
+  { file: 'scenario_npcs.lua', banner: 'RELOAD AGAIN: NPCS, SPAWNING AND DIALOGUE', reload: true },
 ];
+
+function findLuaFilesLike(dir, ext) {
+  const out = [];
+  (function walk(d) {
+    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith(ext)) out.push(p);
+    }
+  })(dir);
+  return out;
+}
 
 function findLuaFiles(dir) {
   const out = [];
@@ -46,6 +59,27 @@ const modFiles = findLuaFiles(MOD_LUA);
 // ---------------------------------------------------------------------------
 // Pass 1: syntax
 // ---------------------------------------------------------------------------
+
+// --- ANIMSET CHECK ---
+// The engine appears to read animsets from <mod>/media/animsets rather than the
+// versioned <mod>/42/media/animsets, so both are shipped. They must not drift.
+{
+  const modRoot = path.join(REPO, 'mod', 'knoxstories');
+  const a = path.join(modRoot, '42', 'media', 'animsets');
+  const b = path.join(modRoot, 'media', 'animsets');
+  const list = (d) => fs.existsSync(d)
+    ? findLuaFilesLike(d, '.xml').map((f) => path.relative(d, f).split(path.sep).join('/')).sort()
+    : [];
+  const av = list(a), bv = list(b);
+  console.log('=== ANIMSETS ===');
+  console.log('  versioned     ' + av.length);
+  console.log('  non-versioned ' + bv.length);
+  if (av.length === 0 || bv.length === 0 || JSON.stringify(av) !== JSON.stringify(bv)) {
+    console.error('  FAIL: the two animset trees differ, or one is missing');
+    process.exit(1);
+  }
+  console.log('  OK   both trees identical');
+}
 
 console.log('=== SYNTAX (Lua 5.1) ===');
 let syntaxErrors = 0;
@@ -112,7 +146,13 @@ function run(label, src) {
 
 const readLua = (name) => fs.readFileSync(path.join(LUA_DIR, name), 'utf8');
 
+// The maintenance file's own source, so a scenario can re-load it with the
+// engine event removed and prove it degrades loudly rather than vanishing.
+const maintainPath = path.join(MOD_LUA, 'client', 'KnoxStories', 'KS_NPCMaintain.lua');
+const maintainSrc = fs.readFileSync(maintainPath, 'utf8');
+
 run('stubs', readLua('stubs.lua'));
+run('maintain-source', 'MAINTAIN_SOURCE = ' + JSON.stringify(maintainSrc));
 run('mod', modSource);
 
 for (const scenario of SCENARIOS) {

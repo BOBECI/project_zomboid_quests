@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode x_extends="knoxNpc_ShotLegFallL.xml">
+	<m_Name>knoxNpc_ShotLegFallBehindL</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_Conditions x_name="b5a9b797-4b62-4468-9900-0cafa2d64fd2">
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>

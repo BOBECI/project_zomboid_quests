@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>knoxNpc_GeneralStagger</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_Looped>false</m_Looped>
+	<m_BlendOutTime>0.30</m_BlendOutTime>
+	<m_SpeedScale>0.50</m_SpeedScale>
+	<m_Conditions>
+		<m_Name>hitforce</m_Name>
+		<m_Type>LESS</m_Type>
+		<m_Value>0.4</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>

@@ -483,3 +483,231 @@ function PLAYER:getPlayerNum() return self._playerNum or 0 end
 
 Core = { getMyDocumentFolder = function() return "C:/Users/test/Zomboid" end }
 function getFileSeparator() return "/" end
+
+--------------------------------------------------------------------------------
+-- Zombies, squares as places to stand, and the dialogue window
+--------------------------------------------------------------------------------
+
+local Zombie = {}
+Zombie.__index = Zombie
+
+function Zombie.new(x, y, z, outfit, female)
+    return setmetatable({
+        _x = x, _y = y, _z = z, _outfit = outfit, _female = female,
+        _modData = {}, _vars = {}, _attached = true, _handModels = true,
+        _descriptor = { voice = "zombie" }, _emitter = { playing = true },
+    }, Zombie)
+end
+
+function Zombie:getX() return self._x end
+function Zombie:getY() return self._y end
+function Zombie:getZ() return self._z end
+function Zombie:setPosition(x, y, z) self._x, self._y, self._z = x, y, z end
+function Zombie:getModData() return self._modData end
+function Zombie:setCanWalk(b) self._canWalk = b end
+function Zombie:setUseless(b) self._useless = b end
+function Zombie:setInvulnerable(b) self._invulnerable = b end
+function Zombie:setNoTeeth(b) self._noTeeth = b end
+function Zombie:setVariable(name, value) self._vars[name] = value end
+function Zombie:getVariable(name) return self._vars[name] end
+function Zombie:clearAttachedItems() self._attached = false end
+function Zombie:resetEquippedHandsModels() self._handModels = false end
+function Zombie:getDescriptor()
+    local d = self._descriptor
+    return {
+        setVoicePrefix = function(_, v) d.voice = v end,
+        getVoicePrefix = function() return d.voice end,
+    }
+end
+function Zombie:getEmitter()
+    local e = self._emitter
+    return { stopAll = function() e.playing = false end }
+end
+_G.TestZombie = Zombie
+
+-- addZombiesInOutfit is the vanilla spawner the disguise is built on top of.
+SPAWNED_ZOMBIES = {}
+ADD_ZOMBIES_FAILS = false
+
+function addZombiesInOutfit(x, y, z, count, outfit, femaleChance, ...)
+    if ADD_ZOMBIES_FAILS then
+        return nil
+    end
+
+    local zombie = Zombie.new(x, y, z, outfit, femaleChance == 100)
+    zombie:zombieSkin()
+    table.insert(SPAWNED_ZOMBIES, zombie)
+
+    local list = ArrayList.new()
+    list:add(zombie)
+    return list
+end
+
+-- Squares report whether something can stand on them, and who is standing there.
+function Square:setStandable(solid, free)
+    self._solid = solid
+    self._free = free
+end
+function Square:isSolidFloor() return self._solid == true end
+function Square:isFree(_) return self._free == true end
+function Square:getMovingObjects()
+    self._moving = self._moving or ArrayList.new()
+    return self._moving
+end
+function Square:addMovingObject(o) self:getMovingObjects():add(o) end
+function Square:transmitRemoveItemFromSquare(o) self._objects:remove(o) end
+
+-- Everything a square in a loaded cell can do; getGridSquare returns nil for
+-- anything outside the loaded set so the spawner's guards get exercised.
+LOADED_SQUARES = nil
+
+local plainGetGridSquare = Cell.getGridSquare
+function Cell:getGridSquare(x, y, z)
+    if LOADED_SQUARES and not LOADED_SQUARES[x .. "," .. y .. "," .. z] then
+        return nil
+    end
+    return plainGetGridSquare(self, x, y, z)
+end
+
+DIALOGUE_SHOWN = {}
+ISModalRichText = {}
+function ISModalRichText:new(x, y, w, h, text, yesno, target, onclick, player)
+    local o = setmetatable({ text = text, player = player }, { __index = self })
+    return o
+end
+function ISModalRichText:initialise() self.initialised = true end
+function ISModalRichText:addToUIManager() table.insert(DIALOGUE_SHOWN, self.text) end
+function ISModalRichText:destroy() self.destroyed = true end
+
+Events.EveryOneMinute = mkEvent()
+
+-- OnFillWorldObjectContextMenu hands over IsoObjects, not squares, and the mod
+-- reaches the square through them. Modelled so the test cannot take a shortcut
+-- the game would not offer.
+function WorldObject:getSquare() return self._square end
+
+function Square:makeObject(spriteName)
+    local object = WorldObject.new(spriteName)
+    object._square = self
+    self._objects:add(object)
+    return object
+end
+
+--------------------------------------------------------------------------------
+-- Blood, worn clothing and zombie identity
+--------------------------------------------------------------------------------
+
+BloodBodyPartType = {
+    MAX = { index = function() return 3 end },
+    FromIndex = function(i) return "part" .. i end,
+}
+
+local function newVisual()
+    local blood, dirt = {}, {}
+    local state = { skin = nil }
+    return {
+        _blood = blood, _dirt = dirt, _state = state,
+        setSkinTextureName = function(_, name) state.skin = name end,
+        getSkinTextureName = function() return state.skin end,
+        getSkinTexture = function() return state.skin end,
+        setBlood = function(_, part, v) blood[part] = v end,
+        getBlood = function(_, part) return blood[part] or 0 end,
+        setDirt = function(_, part, v) dirt[part] = v end,
+        getDirt = function(_, part) return dirt[part] or 0 end,
+    }
+end
+
+local nextUID = 1
+
+function Zombie:getUID()
+    if not self._uid then
+        self._uid = nextUID
+        nextUID = nextUID + 1
+    end
+    return self._uid
+end
+
+function Zombie:getHumanVisual()
+    self._humanVisual = self._humanVisual or newVisual()
+    return self._humanVisual
+end
+
+function Zombie:getWornItems()
+    if not self._worn then
+        self._worn = ArrayList.new()
+        local visual = newVisual()
+        local item = { getVisual = function() return visual end }
+        self._worn:add({ getItem = function() return item end })
+    end
+    return self._worn
+end
+
+function Zombie:resetModelNextFrame() self._modelReset = (self._modelReset or 0) + 1 end
+
+-- Test helper: smear blood on everything, as being struck does.
+function Zombie:bloody()
+    self:getHumanVisual():setBlood("part0", 1)
+    self:getWornItems():get(0):getItem():getVisual():setBlood("part1", 1)
+end
+
+function Zombie:isBloody()
+    if self:getHumanVisual():getBlood("part0") > 0 then return true end
+    if self:getWornItems():get(0):getItem():getVisual():getBlood("part1") > 0 then return true end
+    return false
+end
+
+-- addZombiesInOutfit hands back a ZOMBIE, so its skin texture is a zombie one.
+-- Modelled so a disguise that forgets the face fails here.
+function Zombie:zombieSkin()
+    self:getHumanVisual():setSkinTextureName(self._female and "F_ZedBody01_level1"
+        or "M_ZedBody01_level1")
+end
+
+function Zombie:skinName() return self:getHumanVisual():getSkinTextureName() end
+
+-- Losing the runtime half of the disguise, as a save and reload does. ModData
+-- survives; nothing else on the object does.
+function Zombie:forgetRuntimeState()
+    self._canWalk = nil
+    self._useless = nil
+    self._invulnerable = nil
+    self._noTeeth = nil
+    self._vars = {}
+    self._descriptor.voice = "zombie"
+    self._emitter.playing = true
+    self:zombieSkin()
+end
+
+Events.OnZombieUpdate = mkEvent()
+
+-- Getters the read-back diagnostic uses. Deliberately partial: isCanWalk and
+-- getOutfitName are guesses at API names, so the stub not having them is the
+-- honest model -- readBack must print "?" rather than fall over.
+function Zombie:isUseless() return self._useless == true end
+function Zombie:isInvulnerable() return self._invulnerable == true end
+
+-- The engine rewriting the skin back, as it appears to be doing in play. Set
+-- ENGINE_REWRITES_SKIN to make every read return a zombie texture regardless of
+-- what was written, so the drift detection has something to detect.
+ENGINE_REWRITES_SKIN = false
+
+local plainGetHumanVisual = Zombie.getHumanVisual
+function Zombie:getHumanVisual()
+    local visual = plainGetHumanVisual(self)
+
+    if ENGINE_REWRITES_SKIN then
+        local realGet = visual.getSkinTexture
+        visual.getSkinTexture = function() return "F_ZedBody01_level1" end
+        visual._realGetSkinTexture = realGet
+    end
+
+    return visual
+end
+
+-- The value, not the slot. This is what the reference mod guards on, and what
+-- distinguishes "still dressed" from "dressed once, then overwritten".
+function Zombie:getVariableBoolean(name) return self._vars[name] == true end
+
+-- Empty a square of everything standing on it, so a test can model arriving at a
+-- house where nobody is home.
+function Square:clearMovingObjects() self._moving = ArrayList.new() end

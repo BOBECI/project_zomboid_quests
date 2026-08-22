@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>knoxNpc_SittingIdle</m_Name>
+	<m_AnimName>Bob_SitGround_Idle</m_AnimName>
+	<m_BlendTime>0.3</m_BlendTime>
+	<m_SpeedScale>0.5</m_SpeedScale>
+	<m_randomAdvanceFraction>0.50</m_randomAdvanceFraction>
+	<m_Conditions>
+		<m_Name>knoxNpcSittingIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>

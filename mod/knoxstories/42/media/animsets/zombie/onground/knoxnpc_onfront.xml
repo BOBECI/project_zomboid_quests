@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>knoxNpc_onfront</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_SpeedScale>0.5</m_SpeedScale>
+	<m_BlendTime>0.3</m_BlendTime>
+	<m_Conditions x_name="0ce9df5c-71aa-474a-9849-3788f4043262">
+		<m_Name>fallOnFront</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>

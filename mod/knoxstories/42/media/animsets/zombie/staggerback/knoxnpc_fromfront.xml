@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode x_extends="knoxNpc_defaultStaggerBack.xml">
+	<m_Name>knoxNpc_fromFront</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+</animNode>

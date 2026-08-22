@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>knoxNpc_Shove</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_Looped>false</m_Looped>
+	<m_SpeedScale>0.5</m_SpeedScale>
+	<m_BlendTime>0.3</m_BlendTime>
+	<m_Conditions>
+		<m_Name>BumpType</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_StringValue>knoxNpc_Shove</m_StringValue>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+	<m_Events>
+		<m_EventName>FallOnFront</m_EventName>
+		<m_TimePc>0.1</m_TimePc>
+		<m_ParameterValue>true</m_ParameterValue>
+	</m_Events>
+</animNode>

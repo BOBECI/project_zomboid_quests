@@ -197,8 +197,21 @@ KS.Triggers.types.deliver_item = {
             return false, reason
         end
 
+        -- Deliver to a person if one is named, otherwise to a point. Naming an
+        -- NPC copies their coordinates in, so a quest that moves its NPC does
+        -- not also have to remember to move the delivery.
+        if params.npc ~= nil then
+            local npc = KS.NPCs.get(params.npc)
+            if not npc then
+                return false, "it delivers to the npc '" .. tostring(params.npc)
+                    .. "', but no npc with that id exists"
+            end
+
+            params.x, params.y, params.z = npc.x, npc.y, npc.z
+        end
+
         if not isNumber(params.x) or not isNumber(params.y) then
-            return false, "deliver_item needs an 'x' and a 'y' to deliver to"
+            return false, "deliver_item needs an 'x' and a 'y', or an 'npc', to deliver to"
         end
 
         ok, reason = validateFloor(params)

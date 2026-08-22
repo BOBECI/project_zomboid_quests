@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<animNode x_extends="knoxNpc_HeadLeftFall.xml">
+	<m_Name>knoxNpc_HeadLeftBehind</m_Name>
+	<m_AnimName>Bob_Idle</m_AnimName>
+	<m_Conditions x_name="054223e8-3cf6-4609-8e38-42451ac43dfb">
+		<m_Value>true</m_Value>
+	</m_Conditions>
+	<m_Conditions>
+		<m_Name>knoxNpcIdle</m_Name>
+		<m_Type>BOOL</m_Type>
+		<m_BoolValue>true</m_BoolValue>
+	</m_Conditions>
+</animNode>
