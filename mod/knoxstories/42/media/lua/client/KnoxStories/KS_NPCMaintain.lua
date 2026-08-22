@@ -55,9 +55,15 @@ local TICKS_PER_SWEEP = 15
 -- settle or fail to, without filling console.txt for the rest of the session.
 local REPORTS_PER_SPAWN = 12
 
+-- How many times to report the skin drifting back before going quiet. If this
+-- fires every frame the engine is actively rewriting it and the answer is not
+-- "assert harder".
+local DRIFT_REPORTS = 5
+
 local seen = {}
 local sweepTicks = 0
 local reportsLeft = {}
+local driftReports = {}
 
 local function uidOf(zombie)
     local ok, uid = pcall(function() return zombie:getUID() end)
@@ -68,6 +74,7 @@ function KS.NPCMaintain.forget()
     seen = {}
     sweepTicks = 0
     reportsLeft = {}
+    driftReports = {}
 end
 
 local function onZombieUpdate(zombie)
@@ -83,6 +90,18 @@ local function onZombieUpdate(zombie)
 
     local updates = (seen[uid] or 0) + 1
     seen[uid] = updates
+
+    -- Every frame, not on a schedule. The animation variable is what the lifted
+    -- nodes are gated on, and PZ drives animation variables from character state
+    -- each frame, so a value set four times a second may simply never be the one
+    -- in effect when the animation is chosen.
+    local drifted = KS.NPCs.assertLightweight(zombie, def)
+
+    if drifted and (driftReports[uid] or 0) < DRIFT_REPORTS then
+        driftReports[uid] = (driftReports[uid] or 0) + 1
+        KS.log("skin had drifted back on '" .. def.id .. "' at update " .. updates
+            .. " -- the engine is overwriting it")
+    end
 
     -- Applying the disguise once is not enough, and this was the bug: she spawned
     -- correctly and was a plain zombie a moment later.
@@ -157,6 +176,10 @@ local function sweep()
             -- A zombie whose cell has gone takes its object with it, so calling
             -- into a stale reference can fail. Dropping it is correct: the
             -- spawner will make a new one when the cell comes back.
+            -- Cheap assertion first, so it happens even on the sweep, then the
+            -- full treatment.
+            pcall(KS.NPCs.assertLightweight, zombie, def)
+
             local ok, err = pcall(KS.NPCs.applyDisguise, zombie, def)
 
             if not ok then

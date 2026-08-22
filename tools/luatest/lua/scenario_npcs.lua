@@ -361,7 +361,33 @@ check("the animation slot is reported as set, not as a Java object",
     report:find("animVar=set") ~= nil, report)
 check("reading back never throws", pcall(KS.NPCs.readBack, fresh) == true)
 
-print("\n[57] a missing OnZombieUpdate must announce itself")
+print("\n[57] the contested parts are re-stated every frame, not on a timer")
+-- In play the full disguise read back correct on every sample and she still
+-- rendered and behaved as a zombie. The animation variable is what the lifted
+-- nodes are gated on, and PZ drives animation variables from character state
+-- each frame -- so a value set four times a second may never be the one in
+-- effect when the animation is chosen.
+fresh:setVariable(KS.NPCs.ANIM_VARIABLE, nil)
+KS.NPCs.assertLightweight(fresh, diane)
+check("the animation variable is re-stated", fresh:getVariable(KS.NPCs.ANIM_VARIABLE) == true)
+
+-- It must not thrash the model when nothing has changed: a refresh every frame
+-- is its own problem.
+local resetsBefore = fresh._modelReset or 0
+KS.NPCs.assertLightweight(fresh, diane)
+check("an unchanged skin does not refresh the model",
+    (fresh._modelReset or 0) == resetsBefore)
+
+-- And it must notice when the engine puts a zombie texture back, because that
+-- distinguishes "we set it too rarely" from "something is overwriting us".
+fresh:zombieSkin()
+local drifted = KS.NPCs.assertLightweight(fresh, diane)
+check("drift is detected", drifted == true)
+check("and corrected", fresh:skinName():find("FemaleBody") ~= nil, fresh:skinName())
+check("and the model is refreshed for it",
+    (fresh._modelReset or 0) > resetsBefore)
+
+print("\n[58] a missing OnZombieUpdate must announce itself")
 -- OnZombieUpdate is fired by the engine and appears nowhere in the game's own
 -- files, so its existence cannot be confirmed by reading the install. If it is
 -- absent, .Add throws while KS_NPCMaintain loads, the whole file vanishes, and

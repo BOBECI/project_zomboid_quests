@@ -360,3 +360,51 @@ function KS.NPCs.readBack(zombie)
         "voice=" .. read(function() return zombie:getDescriptor():getVoicePrefix() end),
     }, " ")
 end
+
+--------------------------------------------------------------------------------
+-- The cheap per-frame assertion
+--
+-- applyDisguise is the full treatment and is too heavy to run every frame. But
+-- two things in it are contested by the engine and cheap to re-state, and the
+-- evidence says re-stating them four times a second is not enough:
+--
+--   the animation variable  the lifted nodes are gated on it, and PZ drives
+--                           animation variables from character state every
+--                           frame, so a value set once may not survive one
+--                           * the reference mod ran its equivalent on every
+--                             single zombie update, not on a timer
+--
+--   the skin texture        set correctly, confirmed by reading it back, and
+--                           she still rendered as a zombie
+--
+-- Returns true when the skin had drifted since last time, so the caller can say
+-- so. If that turns out to be every frame, the engine is actively fighting us
+-- and the answer is somewhere other than "assert harder".
+--------------------------------------------------------------------------------
+
+function KS.NPCs.assertLightweight(zombie, def)
+    zombie:setVariable(KS.NPCs.ANIM_VARIABLE, true)
+
+    local visual = zombie:getHumanVisual()
+    if not visual then
+        return false
+    end
+
+    local wanted = (def.female and "FemaleBody0" or "MaleBody0")
+        .. tostring(def.skinTexture or 1)
+
+    local ok, current = pcall(function() return visual:getSkinTexture() end)
+    if not ok then
+        return false
+    end
+
+    if tostring(current) == wanted then
+        return false
+    end
+
+    -- Drifted. Put it back and push it to the drawn model.
+    visual:setSkinTextureName(wanted)
+    zombie:resetModelNextFrame()
+
+    return true
+end

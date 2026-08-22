@@ -609,6 +609,7 @@ local function newVisual()
         _blood = blood, _dirt = dirt, _state = state,
         setSkinTextureName = function(_, name) state.skin = name end,
         getSkinTextureName = function() return state.skin end,
+        getSkinTexture = function() return state.skin end,
         setBlood = function(_, part, v) blood[part] = v end,
         getBlood = function(_, part) return blood[part] or 0 end,
         setDirt = function(_, part, v) dirt[part] = v end,
@@ -684,3 +685,21 @@ Events.OnZombieUpdate = mkEvent()
 -- honest model -- readBack must print "?" rather than fall over.
 function Zombie:isUseless() return self._useless == true end
 function Zombie:isInvulnerable() return self._invulnerable == true end
+
+-- The engine rewriting the skin back, as it appears to be doing in play. Set
+-- ENGINE_REWRITES_SKIN to make every read return a zombie texture regardless of
+-- what was written, so the drift detection has something to detect.
+ENGINE_REWRITES_SKIN = false
+
+local plainGetHumanVisual = Zombie.getHumanVisual
+function Zombie:getHumanVisual()
+    local visual = plainGetHumanVisual(self)
+
+    if ENGINE_REWRITES_SKIN then
+        local realGet = visual.getSkinTexture
+        visual.getSkinTexture = function() return "F_ZedBody01_level1" end
+        visual._realGetSkinTexture = realGet
+    end
+
+    return visual
+end
