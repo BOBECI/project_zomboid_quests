@@ -1,9 +1,10 @@
 --[[
     KS_Boot.lua
 
-    Boot banner. Prints what loaded and, more usefully for Phase 1, what the
-    world already remembers -- so a save/reload test is just a matter of reading
-    two lines in console.txt and checking the steps match where you left off.
+    Boot banner. Prints what loaded and, more usefully during development, what
+    the world already remembers -- so a save/reload test is just a matter of
+    reading a few lines in console.txt and checking the steps match where you
+    left off.
 ]]
 
 KnoxStories = KnoxStories or {}
@@ -11,10 +12,14 @@ KnoxStories = KnoxStories or {}
 local KS = KnoxStories
 
 local function onGameStart()
-    local valid, invalid = KS.Quests.ensureValidated()
+    local validQuests, invalidQuests = KS.Quests.ensureValidated()
+    local validNotes, invalidNotes = KS.Notes.ensureValidated()
 
-    KS.print("v" .. KS.VERSION .. " loaded - " .. valid .. " quest(s) registered"
-        .. (invalid > 0 and (", " .. invalid .. " skipped as invalid") or ""))
+    KS.print("v" .. KS.VERSION .. " loaded - "
+        .. validQuests .. " quest(s)"
+        .. (invalidQuests > 0 and (" (" .. invalidQuests .. " skipped)") or "")
+        .. ", " .. validNotes .. " note(s)"
+        .. (invalidNotes > 0 and (" (" .. invalidNotes .. " skipped)") or ""))
 
     -- Absent on a multiplayer client until Phase 6 syncs a copy down.
     if not KS.State then

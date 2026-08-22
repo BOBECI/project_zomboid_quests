@@ -17,6 +17,8 @@
                 {
                     id      = "step_1",
                     trigger = { type = "enter_area", ... },
+                    gives   = "note_id",    optional; handed over when this step
+                                            completes
                     unlocks = "step_2",     nil on the last step; quest completes
                 },
                 ...
@@ -117,6 +119,19 @@ local function validateQuest(def, seenIds)
         if not ok then
             invalidate(def, "step '" .. step.id .. "' has a bad trigger -- " .. tostring(reason))
             return
+        end
+
+        -- Phase 2: a step may hand over a note when it completes.
+        if step.gives ~= nil then
+            if type(step.gives) ~= "string" or step.gives == "" then
+                invalidate(def, "step '" .. step.id .. "' has a 'gives' that is not a note id")
+                return
+            end
+            if not KS.Notes.get(step.gives) then
+                invalidate(def, "step '" .. step.id .. "' gives the note '" .. step.gives
+                    .. "', but no note with that id exists")
+                return
+            end
         end
     end
 

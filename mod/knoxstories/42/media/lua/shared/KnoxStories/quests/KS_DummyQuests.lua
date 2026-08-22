@@ -9,6 +9,9 @@
     Note this file contains no logic at all. It appends data to a table. That is
     the whole point of build plan 3.2: adding a quest is never writing Lua.
 
+    Phase 2 adds 'gives' to two steps, so walking the dummy quests hands you the
+    dummy notes and the copy recipe has something to work on.
+
     ---------------------------------------------------------------------------
     COORDINATES -- read this before testing
 
@@ -45,7 +48,8 @@ local SPOT_4 = { type = "enter_area", x1 = 8150, y1 = 11640, x2 = 8170, y2 = 116
 
 --------------------------------------------------------------------------------
 -- Dummy A -- three steps. Step one fires on arrival in Rosewood, so this quest
--- answers "is the evaluator running at all".
+-- answers "is the evaluator running at all", and hands over the multi-page note
+-- so there is something to copy without walking anywhere.
 --------------------------------------------------------------------------------
 
 table.insert(KnoxStories.QuestDefs, {
@@ -53,7 +57,12 @@ table.insert(KnoxStories.QuestDefs, {
     name = "Dummy A (arrival, then two landmarks)",
     firstStep = "reach_rosewood",
     steps = {
-        { id = "reach_rosewood", trigger = ROSEWOOD_WIDE, unlocks = "reach_fire_station" },
+        {
+            id = "reach_rosewood",
+            trigger = ROSEWOOD_WIDE,
+            gives = "dummy_letter",
+            unlocks = "reach_fire_station",
+        },
         { id = "reach_fire_station", trigger = SPOT_1, unlocks = "reach_police_station" },
         { id = "reach_police_station", trigger = SPOT_2, unlocks = nil },
     },
@@ -70,7 +79,12 @@ table.insert(KnoxStories.QuestDefs, {
     name = "Dummy B (two landmarks, no arrival step)",
     firstStep = "reach_west",
     steps = {
-        { id = "reach_west", trigger = SPOT_3, unlocks = "reach_east" },
+        {
+            id = "reach_west",
+            trigger = SPOT_3,
+            gives = "dummy_envelope",
+            unlocks = "reach_east",
+        },
         { id = "reach_east", trigger = SPOT_4, unlocks = nil },
     },
 })

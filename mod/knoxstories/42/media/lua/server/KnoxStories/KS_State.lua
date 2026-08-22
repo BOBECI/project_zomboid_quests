@@ -98,6 +98,31 @@ end
 -- advances if the world agrees that step is the one currently active.
 --------------------------------------------------------------------------------
 
+-- Phase 2: handing over the note attached to a step.
+--
+-- Phase 6 seam. Items live in a player's inventory, which is per-player data,
+-- not world state -- so in multiplayer this has to be routed to the player whose
+-- command it was, rather than to whoever happens to be local. In single-player
+-- there is exactly one player and getPlayer() is that player.
+local function deliverStepNote(step)
+    if not step.gives then
+        return
+    end
+
+    if isServer() then
+        KS.log("step gives note '" .. step.gives
+            .. "', deferred: no local player on a dedicated server")
+        return
+    end
+
+    local player = getPlayer()
+    if not player then
+        return
+    end
+
+    KS.Notes.giveTo(player, step.gives)
+end
+
 local function advanceStep(payload)
     local ok, reason = KS.Commands.validators[KS.Commands.ADVANCE_STEP](payload)
     if not ok then
@@ -137,6 +162,8 @@ local function advanceStep(payload)
         progress.step = nil
         KS.print("quest '" .. questId .. "': step '" .. from .. "' was the last one -- COMPLETE")
     end
+
+    deliverStepNote(step)
 
     -- Phase 1 only. Real feedback is Phase 5's job; this exists so the state
     -- change is visible in game while there is no content to show.
