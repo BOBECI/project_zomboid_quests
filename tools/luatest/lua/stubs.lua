@@ -123,6 +123,8 @@ local KNOWN_ITEMS = {
     ["Base.RedPen"] = true,
     ["Base.Screwdriver"] = true,
     ["Base.PillsBeta"] = true,
+    ["Base.Plate"] = true,
+    ["Base.TinCanEmpty"] = true,
 }
 
 function instanceItem(fullType)
@@ -302,8 +304,18 @@ function WorldObject:getSprite() return self._sprite end
 
 local WorldItem = {}
 WorldItem.__index = WorldItem
-function WorldItem.new(item) return setmetatable({ _item = item }, WorldItem) end
+function WorldItem.new(item, wx, wy, wz)
+    return setmetatable({ _item = item, _wx = wx or 0, _wy = wy or 0, _wz = wz or 0, _rot = 0 },
+        WorldItem)
+end
 function WorldItem:getItem() return self._item end
+-- Absolute world position. The recorder subtracts the square coordinate from
+-- these to recover the offsets within the tile.
+function WorldItem:getWorldPosX() return self._wx end
+function WorldItem:getWorldPosY() return self._wy end
+function WorldItem:getWorldPosZ() return self._wz end
+function WorldItem:getWorldZRotation() return self._rot end
+function WorldItem:setWorldZRotation(r) self._rot = r end
 
 local Square = {}
 Square.__index = Square
@@ -322,10 +334,12 @@ function Square:getCell() return self._cell end
 function Square:getObjects() return self._objects end
 function Square:getWorldObjects() return self._worldItems end
 function Square:AddSpecialObject(object) self._objects:add(object) end
-function Square:AddWorldInventoryItem(fullType, _, _, _)
+function Square:AddWorldInventoryItem(fullType, ox, oy, oz)
     local item = instanceItem(fullType) or Item.new(fullType)
-    self._worldItems:add(WorldItem.new(item))
-    return item
+    local worldItem = WorldItem.new(item,
+        self._x + (ox or 0), self._y + (oy or 0), self._z + (oz or 0))
+    self._worldItems:add(worldItem)
+    return worldItem
 end
 
 -- Test helper: put a vanilla object here, as the map would.
@@ -388,3 +402,55 @@ end
 
 Events.LoadGridsquare = mkEvent()
 Events.OnPostUIDraw = mkEvent()
+
+--------------------------------------------------------------------------------
+-- Phase 4 fix round: tags, writability, per-player numbers, the user folder
+--------------------------------------------------------------------------------
+
+ItemTag = { WRITE = "write", PEN = "pen", PENCIL = "pencil",
+            BLUE_PEN = "bluepen", RED_PEN = "redpen", GREEN_PEN = "greenpen" }
+
+function Item:hasTag(tag) return self._tags ~= nil and self._tags[tag] == true end
+function Item:canBeWrite() return self._canBeWriteScript == true end
+function Item:isEmptyPages()
+    for _ in pairs(self._pages) do return false end
+    return true
+end
+function Item:setWorldZRotation(r) self._rot = r end
+
+-- Mirrors CanBeWrite and Tags from the real item scripts, so "is this paper" and
+-- "is this a pen" are answered the way the game would answer them.
+local ITEM_PROPS = {
+    ["Base.Notepad"] = { write = true },
+    ["Base.Journal"] = { write = true },
+    ["Base.Notebook"] = { write = true },
+    ["Base.SheetPaper2"] = { write = true },
+    ["Base.GraphPaper"] = { write = true },
+    ["Base.IndexCard"] = { write = true },
+    ["Base.Pen"] = { tags = { write = true, pen = true } },
+    ["Base.Pencil"] = { tags = { write = true, pencil = true } },
+    ["Base.BluePen"] = { tags = { write = true, bluepen = true } },
+    ["Base.RedPen"] = { tags = { write = true, redpen = true } },
+}
+
+local plainInstanceItem = instanceItem
+
+function instanceItem(fullType)
+    local item = plainInstanceItem(fullType)
+    if not item then
+        return nil
+    end
+
+    local props = ITEM_PROPS[fullType]
+    if props then
+        item._canBeWriteScript = props.write == true
+        item._tags = props.tags
+    end
+
+    return item
+end
+
+function PLAYER:getPlayerNum() return self._playerNum or 0 end
+
+Core = { getMyDocumentFolder = function() return "C:/Users/test/Zomboid" end }
+function getFileSeparator() return "/" end

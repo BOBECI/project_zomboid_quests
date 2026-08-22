@@ -17,6 +17,10 @@
                                  anything -- a trigger can be tested many times
                                  before the step actually advances.
 
+      test may be ABSENT. A trigger with no test is an action trigger: nothing
+      polls it, and something else -- a menu option, a player choice -- advances
+      the step directly through KS.Commands. examine is the only one so far.
+
       consume(params, player) -> optional
                                  Called once, server-side, after the step has
                                  actually advanced. This is where a trigger is
@@ -179,7 +183,7 @@ KS.Triggers.types.read_note = {
 --
 -- Phase 4 note: the pilot's real deliveries are to an NPC, which does not exist
 -- yet. The destination is therefore a point on the map for now. When NPCs land,
--- this gains an optional npc = "ruth" that replaces the coordinates; the item
+-- this gains an optional npc = "diane" that replaces the coordinates; the item
 -- half of the trigger does not change.
 --------------------------------------------------------------------------------
 
@@ -252,10 +256,13 @@ KS.Triggers.types.deliver_item = {
 --
 --   { type = "examine", item = "Base.Inhaler", requires = "diane_description" }
 --
--- Fires once the player has looked closely at the thing. The Examine option is
--- hidden entirely until 'requires' is satisfied, so the world gives nothing away
--- before the player has the intel -- see KS_Examine.lua for why hidden rather
--- than greyed out.
+-- An ACTION trigger: it has no test(), so nothing polls it and the only thing
+-- that can advance the step is the player choosing Examine from the menu.
+-- KS_Examine.lua explains why -- in short, "has been examined" is not a property
+-- of a packet of pills, and treating it as one made examining fire on pickup.
+--
+-- The Examine option is hidden entirely until 'requires' is satisfied, so the
+-- world gives nothing away before the player has the intel.
 --
 -- 'requires' is optional. Without it the thing is examinable as soon as the step
 -- is active, which is the ordinary case; the conditional form is the interesting
@@ -283,8 +290,5 @@ KS.Triggers.types.examine = {
         return true
     end,
 
-    test = function(params, player)
-        local item = KS.Inventory.findBySpec(player, params)
-        return item ~= nil and KS.Examine.isExamined(item)
-    end,
+    -- No test. See above.
 }

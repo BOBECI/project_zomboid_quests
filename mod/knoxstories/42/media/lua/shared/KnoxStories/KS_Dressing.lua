@@ -16,7 +16,7 @@
     Format, as written by the in-game recorder:
 
         {
-            id   = "ruth_house",
+            id   = "diane_house",
             area = { x1 = , y1 = , x2 = , y2 = , z1 = , z2 = },
             objects = { { x = , y = , z = , sprite = "..." }, ... },
             items   = { { x = , y = , z = , item = "Base.TinCan" }, ... },
@@ -206,7 +206,17 @@ function KS.Dressing.applyToSquare(square)
     end
 
     for i = 1, #entry.items do
-        square:AddWorldInventoryItem(entry.items[i].item, 0.0, 0.0, 0.0)
+        local p = entry.items[i]
+
+        -- ox/oy place it across the tile, oz is height above the floor. Without
+        -- oz a plate recorded on a table comes back on the ground, which reads
+        -- as looting rather than as a room someone left mid-use.
+        local worldItem = square:AddWorldInventoryItem(p.item, p.ox or 0.0, p.oy or 0.0, p.oz or 0.0)
+
+        if worldItem and p.rot and p.rot ~= 0 then
+            pcall(function() worldItem:setWorldZRotation(p.rot) end)
+        end
+
         placed = placed + 1
     end
 

@@ -187,6 +187,10 @@ Proves the recorded file actually dresses the world.
    > It exports as `.txt` because the game refuses to open a `.lua` file for
    > writing. The contents are already Lua; only the extension changes.
 
+   > Windows 11 hides known file extensions by default, so the rename is
+   > impossible until you tick **View -> Show -> File name extensions** in
+   > Explorer.
+
 2. **Delete the things you placed** from the world, so you can tell whether they
    come back.
 3. Fully restart the game.
@@ -223,7 +227,8 @@ it.
 
 ## Test 4 — The conditional examine
 
-The Diane mechanic, on stand-in items.
+The Diane mechanic (Casey's things becoming legible once you carry Diane's
+description), on stand-in items.
 
 ### First, confirm the option is absent
 
@@ -321,6 +326,6 @@ Ranked by how much I want to know:
 
 ## Still to come in Phase 4
 
-The zombie-as-NPC spawn with the retry fallback, and the dialogue window. Ruth
-doesn't exist yet. When she does, `deliver_item` gains an `npc =` destination and
-stops delivering to an empty patch of ground.
+The zombie-as-NPC spawn with the retry fallback, and the dialogue window. Diane
+and Casey do not exist yet. When they do, `deliver_item` gains an `npc =`
+destination and stops delivering to an empty patch of ground.

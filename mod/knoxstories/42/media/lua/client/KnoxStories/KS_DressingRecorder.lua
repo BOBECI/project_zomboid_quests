@@ -46,8 +46,31 @@ local session = nil
 -- Scanning
 --------------------------------------------------------------------------------
 
--- A square's contents as two name -> count tables. Counting rather than just
--- listing means placing a second identical tin can on one square is noticed.
+-- Where an item sits WITHIN its tile, not just which tile it is on.
+--
+-- AddWorldInventoryItem takes (type, xoff, yoff, zoff): the first two place it
+-- across the tile, the third is height. A plate on a table has a zoff of
+-- roughly half a tile; a plate on the floor has zero. Recording only the tile
+-- coordinate is why the first version put everything on the ground.
+local function offsetsOf(worldItem, x, y, z)
+    local ok, ox, oy, oz = pcall(function()
+        return worldItem:getWorldPosX() - x,
+               worldItem:getWorldPosY() - y,
+               worldItem:getWorldPosZ() - z
+    end)
+
+    if not ok or type(ox) ~= "number" then
+        return 0, 0, 0, 0
+    end
+
+    local rotOk, rot = pcall(function() return worldItem:getWorldZRotation() end)
+
+    return ox, oy, oz, (rotOk and type(rot) == "number") and rot or 0
+end
+
+-- Sprites are counted; items are listed, because an item's offsets have to
+-- survive into the export and a count cannot carry them. Counting rather than
+-- just listing sprites means a second identical chair on one tile is noticed.
 local function scanSquare(square)
     local sprites, items = {}, {}
 
@@ -63,17 +86,31 @@ local function scanSquare(square)
 
     local worldItems = square:getWorldObjects()
     if worldItems then
+        local x, y, z = square:getX(), square:getY(), square:getZ()
+
         for i = 0, worldItems:size() - 1 do
             local worldItem = worldItems:get(i)
             local item = worldItem:getItem()
+
             if item then
-                local fullType = item:getFullType()
-                items[fullType] = (items[fullType] or 0) + 1
+                local ox, oy, oz, rot = offsetsOf(worldItem, x, y, z)
+                table.insert(items, {
+                    item = item:getFullType(),
+                    ox = ox, oy = oy, oz = oz, rot = rot,
+                })
             end
         end
     end
 
     return { sprites = sprites, items = items }
+end
+
+local function countByType(itemList)
+    local counts = {}
+    for i = 1, #itemList do
+        counts[itemList[i].item] = (counts[itemList[i].item] or 0) + 1
+    end
+    return counts
 end
 
 local function scanArea(area)
@@ -169,10 +206,25 @@ local function buildSet()
             end
         end
 
-        for fullType, count in pairs(now.items) do
-            local added = count - (before.items[fullType] or 0)
-            for _ = 1, added do
-                table.insert(items, { x = x, y = y, z = z, item = fullType })
+        -- Match by type, then emit the actual records for the surplus ones, so
+        -- the offsets that came off the world go into the export.
+        local nowCounts = countByType(now.items)
+        local beforeCounts = countByType(before.items)
+
+        local emitted = {}
+        for fullType, count in pairs(nowCounts) do
+            emitted[fullType] = count - (beforeCounts[fullType] or 0)
+        end
+
+        for i = 1, #now.items do
+            local record = now.items[i]
+
+            if (emitted[record.item] or 0) > 0 then
+                emitted[record.item] = emitted[record.item] - 1
+                table.insert(items, {
+                    x = x, y = y, z = z, item = record.item,
+                    ox = record.ox, oy = record.oy, oz = record.oz, rot = record.rot,
+                })
             end
         end
     end
@@ -222,14 +274,41 @@ local function openExport(baseName)
     return nil
 end
 
-local function writePlacements(writer, listName, list, field)
-    writer:write("    " .. listName .. " = {\r\n")
+local function writeObjects(writer, list)
+    writer:write("    objects = {\r\n")
     for i = 1, #list do
         local p = list[i]
-        writer:write(string.format("        { x = %d, y = %d, z = %d, %s = %q },\r\n",
-            p.x, p.y, p.z, field, p[field]))
+        writer:write(string.format("        { x = %d, y = %d, z = %d, sprite = %q },\r\n",
+            p.x, p.y, p.z, p.sprite))
     end
     writer:write("    },\r\n")
+end
+
+local function writeItems(writer, list)
+    writer:write("    items = {\r\n")
+    for i = 1, #list do
+        local p = list[i]
+        writer:write(string.format(
+            "        { x = %d, y = %d, z = %d, item = %q, ox = %.3f, oy = %.3f, oz = %.3f, rot = %.1f },\r\n",
+            p.x, p.y, p.z, p.item, p.ox or 0, p.oy or 0, p.oz or 0, p.rot or 0))
+    end
+    writer:write("    },\r\n")
+end
+
+-- The absolute path the export actually landed on. getFileWriter is sandboxed
+-- to the Lua subfolder of the user directory, which is NOT where the docs used
+-- to say to look -- a success message naming the wrong folder is worse than no
+-- message, so this reports the real one.
+local function exportPath(filename)
+    local ok, base = pcall(function()
+        return Core.getMyDocumentFolder() .. getFileSeparator() .. "Lua" .. getFileSeparator()
+    end)
+
+    if ok and type(base) == "string" then
+        return base .. filename
+    end
+
+    return "<Zomboid user folder>" .. "/Lua/" .. filename
 end
 
 function KS.Recorder.finish()
@@ -262,14 +341,14 @@ function KS.Recorder.finish()
     writer:write(string.format("    id = %q,\r\n", set.id))
     writer:write(string.format("    area = { x1 = %d, y1 = %d, x2 = %d, y2 = %d, z1 = %d, z2 = %d },\r\n",
         set.area.x1, set.area.y1, set.area.x2, set.area.y2, set.area.z1, set.area.z2))
-    writePlacements(writer, "objects", set.objects, "sprite")
-    writePlacements(writer, "items", set.items, "item")
+    writeObjects(writer, set.objects)
+    writeItems(writer, set.items)
     writer:write("})\r\n")
     writer:close()
 
     KS.print("exported '" .. set.id .. "': " .. #set.objects .. " object(s), "
         .. #set.items .. " item(s)")
-    KS.print("written to Zomboid/Lua/" .. filename)
+    KS.print("written to " .. exportPath(filename))
     KS.print("rename it to .lua, then copy it into the mod's dressing folder")
 
     session = nil

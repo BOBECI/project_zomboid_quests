@@ -21,12 +21,10 @@ local function actualItems(items)
 end
 
 local function onExamine(player, item)
-    KS.Examine.mark(item)
-
-    -- No step advance here. The polled evaluator notices the flag within about
-    -- half a second, which keeps every trigger advancing through the same path
-    -- rather than giving this one a private route into world state.
-    if HaloTextHelper then
+    -- This is the only thing that can advance an examine step. It still goes
+    -- through KS.Commands, so the server remains the one place world state is
+    -- written -- it is just an action rather than a polled condition.
+    if KS.Examine.perform(player, item) and HaloTextHelper then
         HaloTextHelper.addText(player, "You take a closer look.")
     end
 end
@@ -42,7 +40,7 @@ local function onFillInventoryObjectContextMenu(playerNum, context, items)
     for i = 1, #candidates do
         local item = candidates[i]
 
-        if KS.Examine.triggerFor(player, item) then
+        if KS.Examine.stepFor(player, item) then
             context:addOption("Examine", player, onExamine, item)
             return
         end

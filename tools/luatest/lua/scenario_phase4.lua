@@ -32,6 +32,11 @@ table.insert(KS.DressingSets, {
     objects = { { x = 50, y = 60, z = 0, sprite = "furniture_seating_indoor_01_20" } },
     items = { { x = 50, y = 60, z = 0, item = "Base.PillsBeta" } },
 })
+table.insert(KS.DressingSets, {
+    id = "surface_test",
+    objects = {},
+    items = { { x = 70, y = 80, z = 0, item = "Base.Plate", ox = 0.4, oy = 0.6, oz = 0.5 } },
+})
 table.insert(KS.DressingSets, { objects = {}, items = {} })
 table.insert(KS.DressingSets, { id = "empty_set", objects = {}, items = {} })
 table.insert(KS.DressingSets, {
@@ -46,7 +51,7 @@ Events.OnGameStart.fire()
 
 print("\n[29] dressing set validation")
 local validSets, invalidSets = KS.Dressing.ensureValidated()
-check("1 valid dressing set", validSets == 1, validSets)
+check("2 valid dressing sets", validSets == 2, validSets)
 check("4 broken sets skipped", invalidSets == 4, invalidSets)
 check("a set placing nothing is rejected", KS.Dressing.forSquare(1, 2, 0) == nil)
 
@@ -89,10 +94,15 @@ target:AddSpecialObject(IsoObject.new(nil, target, "furniture_tables_01_1"))
 target:AddSpecialObject(IsoObject.new(nil, target, "furniture_tables_01_1"))
 getCell():getGridSquare(199, 299, 0):AddWorldInventoryItem("Base.TinCanEmpty", 0, 0, 0)
 
+-- On a table, not the floor. Found in play: the first version stored only the
+-- tile, so everything came back on the ground -- which for two place settings on
+-- a dining table reads as looting rather than as a room left mid-use.
+getCell():getGridSquare(199, 299, 0):AddWorldInventoryItem("Base.Plate", 0.4, 0.6, 0.5)
+
 local set = KS.Recorder.finish()
 check("recording stops", KS.Recorder.isRecording() == false)
 check("two objects captured", #set.objects == 2, #set.objects)
-check("one item captured", #set.items == 1, #set.items)
+check("two items captured", #set.items == 2, #set.items)
 check("the vanilla wall was not captured", (function()
     for i = 1, #set.objects do
         if set.objects[i].sprite == "walls_exterior_house_01_0" then return false end
@@ -114,6 +124,31 @@ check("it registers a dressing set", written:find("KnoxStories.DressingSets") ~=
 check("it contains the placed sprite", written:find("furniture_tables_01_1") ~= nil)
 check("it does not contain the vanilla wall",
     written:find("walls_exterior_house_01_0") == nil)
+
+-- Defect 2: the height offset has to survive the round trip, or a plate
+-- recorded on a table comes back on the floor.
+local plate = nil
+for i = 1, #set.items do
+    if set.items[i].item == "Base.Plate" then plate = set.items[i] end
+end
+check("the plate on the table was captured", plate ~= nil)
+check("its height offset was captured", plate and math.abs(plate.oz - 0.5) < 0.001, plate and plate.oz)
+check("and its position across the tile", plate
+    and math.abs(plate.ox - 0.4) < 0.001 and math.abs(plate.oy - 0.6) < 0.001)
+check("the export writes the offsets", written:find("oz = 0.500") ~= nil)
+
+-- And back out again. The set itself is registered at the top of this file,
+-- before anything validates the registry.
+local surfaceSquare = getCell():getGridSquare(70, 80, 0)
+KS.Dressing.applyToSquare(surfaceSquare)
+local restored = surfaceSquare:getWorldObjects():get(0)
+check("something was restored", restored ~= nil)
+check("restored onto the surface, not the floor",
+    restored and math.abs(restored:getWorldPosZ() - 0.5) < 0.001,
+    restored and restored:getWorldPosZ())
+check("and at the right spot across the tile",
+    restored and math.abs(restored:getWorldPosX() - 70.4) < 0.001,
+    restored and restored:getWorldPosX())
 
 check("finishing with nothing recording returns nothing", KS.Recorder.finish() == nil)
 
@@ -151,31 +186,89 @@ clearInventory()
 local pills = inv:AddItem("Base.PillsBeta")
 check("dummy_d is waiting on the examine step",
     where("dummy_d") == "active/examine_the_pills", where("dummy_d"))
-check("no trigger offered without the note", KS.Examine.triggerFor(PLAYER, pills) == nil)
+check("no step offered without the note", KS.Examine.stepFor(PLAYER, pills) == nil)
 
 local menu = TestMenu.new()
 Events.OnFillInventoryObjectContextMenu.fire(0, menu, { pills })
 check("and no Examine option in the menu", menu:find("Examine") == nil)
 
 KS.Notes.giveTo(PLAYER, "dummy_envelope")
-check("carrying the note makes it examinable", KS.Examine.triggerFor(PLAYER, pills) ~= nil)
+check("carrying the note makes it examinable", KS.Examine.stepFor(PLAYER, pills) ~= nil)
 
 menu = TestMenu.new()
 Events.OnFillInventoryObjectContextMenu.fire(0, menu, { pills })
 local option = menu:find("Examine")
 check("the Examine option appears", option ~= nil)
 
-print("\n[34] examining advances the step through the normal evaluator")
-check("still unexamined", KS.Examine.isExamined(pills) == false)
-tick()
-check("holding both is not enough on its own",
+print("\n[34] examining is an act, not something that happens to you")
+-- Found in play: with the note already in hand, the step fired the moment the
+-- pills were picked up, so the option had already been used by the time the
+-- player right-clicked. Nothing except the menu may advance an examine step.
+for _ = 1, 5 do tick() end
+check("carrying both, indefinitely, advances nothing",
     where("dummy_d") == "active/examine_the_pills", where("dummy_d"))
+check("the trigger is not polled at all", KS.Triggers.types.examine.test == nil)
 
 option.onSelect(option.target, option.args[1])
-check("the menu option marked it examined", KS.Examine.isExamined(pills) == true)
-tick()
-check("dummy_d completed", where("dummy_d") == "complete/nil", where("dummy_d"))
-check("examining twice is a no-op", KS.Examine.mark(pills) == false)
+check("choosing Examine completes the quest",
+    where("dummy_d") == "complete/nil", where("dummy_d"))
+
+menu = TestMenu.new()
+Events.OnFillInventoryObjectContextMenu.fire(0, menu, { pills })
+check("and the option is gone once the step is done", menu:find("Examine") == nil)
+
+print("\n[35] a quest reset is a real reset, on the same objects")
+-- Found in play: the examined flag lived on the item and outlived the reset, so
+-- re-running with the same packet silently did nothing. Nothing is written onto
+-- the item now, so the same packet has to work again.
+check("reset", KS.State.debugResetQuest("dummy_d") == true)
+check("the same pills and the same card are examinable again",
+    KS.Examine.stepFor(PLAYER, pills) ~= nil)
+
+menu = TestMenu.new()
+Events.OnFillInventoryObjectContextMenu.fire(0, menu, { pills })
+option = menu:find("Examine")
+check("the option is back on the very same item", option ~= nil)
+option.onSelect(option.target, option.args[1])
+check("and completes again", where("dummy_d") == "complete/nil", where("dummy_d"))
+
+-- Two identical packets must behave identically.
+KS.State.debugResetQuest("dummy_d")
+local secondPacket = inv:AddItem("Base.PillsBeta")
+check("a second identical packet behaves the same as the first",
+    (KS.Examine.stepFor(PLAYER, pills) ~= nil)
+        == (KS.Examine.stepFor(PLAYER, secondPacket) ~= nil))
+
+print("\n[36] copying accepts anything the game says is writable")
+clearInventory()
+local original = KS.Notes.giveTo(PLAYER, "dummy_letter")
+inv:AddItem("Base.Pencil")
+
+for _, paper in ipairs({ "Base.GraphPaper", "Base.IndexCard", "Base.Journal", "Base.Notebook" }) do
+    clearInventory()
+    original = KS.Notes.giveTo(PLAYER, "dummy_letter")
+    inv:AddItem("Base.Pencil")
+    inv:AddItem(paper)
+    check(paper .. " counts as blank paper", KS.Notes.canCopy(PLAYER, original) == true)
+end
+
+-- A pencil is a writing implement by tag, not because it is on a list.
+clearInventory()
+original = KS.Notes.giveTo(PLAYER, "dummy_letter")
+inv:AddItem("Base.SheetPaper2")
+local moddedPen = inv:AddItem("Base.Screwdriver")
+moddedPen._tags = { write = true }
+check("anything tagged as a writing implement works",
+    KS.Notes.canCopy(PLAYER, original) == true)
+
+-- But a journal someone has written in is not scrap paper.
+clearInventory()
+original = KS.Notes.giveTo(PLAYER, "dummy_letter")
+inv:AddItem("Base.Pen")
+local usedJournal = inv:AddItem("Base.Journal")
+usedJournal:addPage(1, "someone's diary")
+local ok2, reason2 = KS.Notes.canCopy(PLAYER, original)
+check("a journal with writing in it is not blank paper", ok2 == false, reason2)
 
 print("\n[35] the coordinate readout")
 DRAWN_STRINGS = {}

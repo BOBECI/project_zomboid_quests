@@ -47,19 +47,24 @@ local LOCK_KEY = "knoxStories"
 
 -- What counts as a writing implement and what counts as blank paper.
 --
--- These names are read off media/scripts/generated/items/ in the B42 install,
--- not guessed. Two things there are worth knowing:
+-- Both now ask the game rather than consulting a list of names, because paper is
+-- scarce in B42 and a narrow list turns copying into a treasure hunt.
 --
---   - the sheet of paper is SheetPaper2. There is no Base.SheetPaper.
---   - pens and pencils are base:weapon, not drainable, so copying does not wear
---     them out. That is fine: the cost of a copy is the paper and the time, not
---     the pen. performCopy still calls Use() if it ever meets a drainable one.
+--   Writing implements: the game's own "can I write on this note" check is
+--   playerInv:containsTagRecurse(ItemTag.WRITE) plus the per-colour pen tags.
+--   Matching that exactly means our Copy option is offered under precisely the
+--   conditions the vanilla Write option is, including for modded pens.
 --
--- Every vanilla writing implement carries the tag "write", which would be a
--- tidier test than a list. Left as a list because a tag lookup is one more
--- engine call I cannot verify from the scripts alone, and a wrong guess here
--- silently removes the copy option.
+--   Paper: anything the game says CanBeWrite that has no pages written on it.
+--   That covers SheetPaper2, GraphPaper, IndexCard, Notepad, Journal, Notebook,
+--   the greeting cards, and anything a mod adds, without naming any of them.
+--
+-- The type lists survive as a fallback for when the tag API is not available,
+-- and as the answer to "what does a pen mean" in the tests.
 KS.Notes.PEN_TYPES = { "Base.Pen", "Base.Pencil", "Base.BluePen", "Base.RedPen" }
+KS.Notes.PEN_TAGS = { "WRITE", "PEN", "PENCIL", "BLUE_PEN", "RED_PEN", "GREEN_PEN" }
+
+-- Only consulted if canBeWrite() cannot be called on an item.
 KS.Notes.PAPER_TYPES = { "Base.SheetPaper2", "Base.Notepad", "Base.GraphPaper", "Base.IndexCard" }
 
 local index = nil
@@ -279,21 +284,56 @@ local function isTypeIn(item, types)
 end
 
 local function isPen(item)
+    -- Tags first, so a modded pen the game would accept works here too.
+    for i = 1, #KS.Notes.PEN_TAGS do
+        local ok, tagged = pcall(function() return item:hasTag(ItemTag[KS.Notes.PEN_TAGS[i]]) end)
+        if ok and tagged then
+            return true
+        end
+    end
+
     return isTypeIn(item, KS.Notes.PEN_TYPES)
+end
+
+-- Is this something you could write a copy onto?
+local function isWritable(item)
+    local ok, writable = pcall(function() return item:canBeWrite() end)
+
+    if ok and type(writable) == "boolean" then
+        return writable
+    end
+
+    return isTypeIn(item, KS.Notes.PAPER_TYPES)
+end
+
+-- Does it already have something written on it? Copying onto someone's diary
+-- would destroy it, and the engine tracks this for us.
+local function hasWriting(item)
+    local ok, empty = pcall(function() return item:isEmptyPages() end)
+
+    if ok and type(empty) == "boolean" then
+        return not empty
+    end
+
+    return false
 end
 
 local function isBlankPaper(item, original)
     if item == original then
         return false
     end
-    if not isTypeIn(item, KS.Notes.PAPER_TYPES) then
+    if not isWritable(item) then
         return false
     end
-    -- Never cannibalise another quest note, or anything already written on.
+    -- Never cannibalise another quest note, or anything already written on --
+    -- someone's own journal included.
     if KS.Notes.idOf(item) then
         return false
     end
     if item:getLockedBy() then
+        return false
+    end
+    if hasWriting(item) then
         return false
     end
     return true

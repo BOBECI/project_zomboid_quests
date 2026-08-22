@@ -29,27 +29,37 @@ local TICKS_PER_SCAN = 30
 -- With DEBUG on, print the player's position every this many scans (~5s).
 local SCANS_PER_POSITION_LOG = 10
 
-local tickCounter = 0
-local scanCounter = 0
-local lastLoggedPos = nil
+-- Counters are per player, not per file. With one shared counter, split-screen
+-- or a second local player would each advance it, so the scan would run at twice
+-- the intended rate for one of them and the position log would interleave two
+-- players' coordinates. Harmless in single-player, wrong the moment there are
+-- two, and cheaper to fix now than to remember in Phase 6.
+local perPlayer = {}
 
-local function logPosition(player)
+local function stateFor(player)
+    local index = player:getPlayerNum()
+
+    perPlayer[index] = perPlayer[index] or { ticks = 0, scans = 0, lastPos = nil }
+    return perPlayer[index]
+end
+
+local function logPosition(player, state)
     if not KS.DEBUG then
         return
     end
 
-    scanCounter = scanCounter + 1
-    if scanCounter < SCANS_PER_POSITION_LOG then
+    state.scans = state.scans + 1
+    if state.scans < SCANS_PER_POSITION_LOG then
         return
     end
-    scanCounter = 0
+    state.scans = 0
 
     local pos = math.floor(player:getX()) .. ", " .. math.floor(player:getY())
         .. ", " .. math.floor(player:getZ())
 
     -- Standing still should not fill console.txt.
-    if pos ~= lastLoggedPos then
-        lastLoggedPos = pos
+    if pos ~= state.lastPos then
+        state.lastPos = pos
         KS.log("position: " .. pos)
     end
 end
@@ -84,7 +94,10 @@ function KS.Evaluator.scan(player)
                 if step then
                     local triggerType = KS.Triggers.types[step.trigger.type]
 
-                    if triggerType and triggerType.test(step.trigger, player) then
+                    -- A trigger with no test is an action trigger: something
+                    -- else advances it, and polling would be wrong.
+                    if triggerType and triggerType.test
+                        and triggerType.test(step.trigger, player) then
                         KS.log("trigger fired: " .. def.id .. " / " .. step.id)
                         KS.Commands.send(KS.Commands.ADVANCE_STEP, {
                             questId = def.id,
@@ -98,13 +111,19 @@ function KS.Evaluator.scan(player)
 end
 
 local function onPlayerUpdate(player)
-    tickCounter = tickCounter + 1
-    if tickCounter < TICKS_PER_SCAN then
+    if not player then
         return
     end
-    tickCounter = 0
 
-    logPosition(player)
+    local state = stateFor(player)
+
+    state.ticks = state.ticks + 1
+    if state.ticks < TICKS_PER_SCAN then
+        return
+    end
+    state.ticks = 0
+
+    logPosition(player, state)
     KS.Evaluator.scan(player)
 end
 
