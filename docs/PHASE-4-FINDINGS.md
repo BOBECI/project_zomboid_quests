@@ -3,6 +3,17 @@
 Tested against **v0.4.1** in single-player, Rosewood. Written from the live test
 session; every item below was observed, not inferred.
 
+> **Resolved in v0.5.0.** All four defects fixed, plus both carried-over items.
+> Defects 3 and 4 turned out to be one mistake: the examined flag was on the
+> item, and this doc asking whether it belonged there is what found it. Examine
+> is now an action trigger with no polling, so nothing but the menu can fire it
+> and a reset leaves nothing behind. Regressions for defects 2, 3 and 4 were
+> written from the reproduction steps below. See PHASE-4-TESTING.md for the
+> re-test.
+>
+> Still open: items placed inside a container are not captured by the recorder
+> (surfaces and floors only).
+
 **Summary:** all five tests pass in substance. The recorder produces exactly the
 data we wanted it to produce — additions only, no building geometry. Four defects
 found, none structural. The most interesting one was only visible because the
