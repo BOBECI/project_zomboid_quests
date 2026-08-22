@@ -284,38 +284,54 @@ local function isTypeIn(item, types)
 end
 
 local function isPen(item)
-    -- Tags first, so a modded pen the game would accept works here too.
-    for i = 1, #KS.Notes.PEN_TAGS do
-        local ok, tagged = pcall(function() return item:hasTag(ItemTag[KS.Notes.PEN_TAGS[i]]) end)
-        if ok and tagged then
-            return true
+    -- Tags first, so a modded pen the game would accept works here too. hasTag
+    -- is on InventoryItem so it is safe for any item, unlike canBeWrite below --
+    -- but ItemTag itself is only guarded because it is a global we do not own.
+    if ItemTag then
+        for i = 1, #KS.Notes.PEN_TAGS do
+            local tag = ItemTag[KS.Notes.PEN_TAGS[i]]
+            if tag and item:hasTag(tag) then
+                return true
+            end
         end
     end
 
     return isTypeIn(item, KS.Notes.PEN_TYPES)
 end
 
+-- canBeWrite() and isEmptyPages() exist on literature, not on every item, and
+-- calling them on a hammer raises an engine-level error. The game is careful
+-- about this and we were not: ISInventoryPaneContextMenu guards both behind
+-- getCategory() == "Literature", relying on `or` short-circuiting so the call
+-- never happens for anything else.
+--
+-- A pcall was not good enough. It swallows the error on the Lua side, but the
+-- engine still writes a stack trace to console for every offending item -- and
+-- since the copy scans the whole inventory, that meant a trace per non-literature
+-- item, repeatedly. Guarding is the only thing that actually stops it.
+local function isLiterature(item)
+    return item:getCategory() == "Literature"
+end
+
 -- Is this something you could write a copy onto?
 local function isWritable(item)
-    local ok, writable = pcall(function() return item:canBeWrite() end)
-
-    if ok and type(writable) == "boolean" then
-        return writable
+    if isLiterature(item) then
+        return item:canBeWrite() == true
     end
 
+    -- Anything the engine does not call literature cannot be asked, so fall back
+    -- to the list of types read out of the item scripts.
     return isTypeIn(item, KS.Notes.PAPER_TYPES)
 end
 
 -- Does it already have something written on it? Copying onto someone's diary
 -- would destroy it, and the engine tracks this for us.
 local function hasWriting(item)
-    local ok, empty = pcall(function() return item:isEmptyPages() end)
-
-    if ok and type(empty) == "boolean" then
-        return not empty
+    if not isLiterature(item) then
+        return false
     end
 
-    return false
+    return item:isEmptyPages() ~= true
 end
 
 local function isBlankPaper(item, original)

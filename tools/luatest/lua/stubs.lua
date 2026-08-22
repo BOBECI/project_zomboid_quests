@@ -410,9 +410,37 @@ Events.OnPostUIDraw = mkEvent()
 ItemTag = { WRITE = "write", PEN = "pen", PENCIL = "pencil",
             BLUE_PEN = "bluepen", RED_PEN = "redpen", GREEN_PEN = "greenpen" }
 
+-- hasTag is on InventoryItem, so it is safe for anything.
 function Item:hasTag(tag) return self._tags ~= nil and self._tags[tag] == true end
-function Item:canBeWrite() return self._canBeWriteScript == true end
+
+function Item:getCategory() return self._category or "Item" end
+
+-- canBeWrite and isEmptyPages live on literature. Calling them on a hammer
+-- raises an engine error, and the engine logs a stack trace even when the Lua
+-- side catches it -- so the stub throws, and any code that forgets to guard
+-- fails the suite instead of quietly spamming the player's console.
+-- The engine writes a stack trace to console BEFORE the error reaches Lua, so a
+-- pcall on the Lua side hides the failure from the mod while the player still
+-- watches their console fill up. Recording the call here models that: a test can
+-- then assert on "the engine was never asked", which a pcall cannot satisfy.
+ENGINE_ERRORS = {}
+
+local function engineRefuses(item, method)
+    table.insert(ENGINE_ERRORS, method .. " on " .. tostring(item._fullType))
+    error(method .. " called on a non-literature item: " .. tostring(item._fullType), 0)
+end
+
+function Item:canBeWrite()
+    if self._category ~= "Literature" then
+        engineRefuses(self, "canBeWrite")
+    end
+    return self._canBeWriteScript == true
+end
+
 function Item:isEmptyPages()
+    if self._category ~= "Literature" then
+        engineRefuses(self, "isEmptyPages")
+    end
     for _ in pairs(self._pages) do return false end
     return true
 end
@@ -445,6 +473,7 @@ function instanceItem(fullType)
     if props then
         item._canBeWriteScript = props.write == true
         item._tags = props.tags
+        item._category = props.write and "Literature" or "Item"
     end
 
     return item

@@ -51,8 +51,13 @@ Events.OnGameStart.fire()
 
 print("\n[29] dressing set validation")
 local validSets, invalidSets = KS.Dressing.ensureValidated()
-check("2 valid dressing sets", validSets == 2, validSets)
+-- Asserted against the sets this file registers, not a total count: real
+-- recorded dressing files live in the mod too, and adding one must not break
+-- the suite.
+check("this file's two sets validated",
+    KS.Dressing.forSquare(50, 60, 0) ~= nil and KS.Dressing.forSquare(70, 80, 0) ~= nil)
 check("4 broken sets skipped", invalidSets == 4, invalidSets)
+check("at least those two are valid", validSets >= 2, validSets)
 check("a set placing nothing is rejected", KS.Dressing.forSquare(1, 2, 0) == nil)
 
 print("\n[30] dressing a square as its cell loads")
@@ -270,7 +275,63 @@ usedJournal:addPage(1, "someone's diary")
 local ok2, reason2 = KS.Notes.canCopy(PLAYER, original)
 check("a journal with writing in it is not blank paper", ok2 == false, reason2)
 
-print("\n[35] the coordinate readout")
+print("\n[37] scanning for paper must not touch non-literature items")
+-- Found in play: isWritable called canBeWrite() on everything in the inventory.
+-- That method is literature-only, so a screwdriver raised an engine error -- and
+-- because the copy walks the whole inventory, and the timed action re-walked it
+-- every tick, the console filled with stack traces during a copy.
+--
+-- The stubs now throw exactly as the engine does, so forgetting the guard fails
+-- here instead of quietly spamming the player.
+clearInventory()
+local letter = KS.Notes.giveTo(PLAYER, "dummy_letter")
+inv:AddItem("Base.Pen")
+inv:AddItem("Base.SheetPaper2")
+
+-- A pile of things that are emphatically not literature, including one inside a
+-- bag, because the scan recurses.
+inv:AddItem("Base.Screwdriver")
+inv:AddItem("Base.PillsBeta")
+local toolbag = instanceItem("Base.Notepad")
+toolbag._inventory = TestContainer.new()
+toolbag._category = "Container"
+inv:AddItem(toolbag)
+toolbag:getInventory():AddItem("Base.Screwdriver")
+
+ENGINE_ERRORS = {}
+local scanOk, scanResult = pcall(KS.Notes.canCopy, PLAYER, letter)
+check("scanning a mixed inventory does not error", scanOk == true, not scanOk and scanResult)
+check("and still finds the paper", scanOk and scanResult == true)
+
+local mixedCopied, mixedWhy = KS.Notes.performCopy(PLAYER, letter)
+check("the copy itself survives a mixed inventory", mixedCopied == true, mixedWhy)
+check("the engine was never asked about a non-literature item",
+    #ENGINE_ERRORS == 0, ENGINE_ERRORS[1])
+
+print("\n[38] the copy action does not rescan the inventory every tick")
+clearInventory()
+letter = KS.Notes.giveTo(PLAYER, "dummy_letter")
+local actionPen = inv:AddItem("Base.Pen")
+local actionPaper = inv:AddItem("Base.SheetPaper2")
+inv:AddItem("Base.Screwdriver")
+
+ENGINE_ERRORS = {}
+local action = KS_CopyNoteAction:new(PLAYER, letter)
+check("materials are captured once, when the action is queued",
+    action.pen == actionPen and action.paper == actionPaper)
+check("valid while they are held", action:isValid() == true)
+
+local quiet = true
+for _ = 1, 200 do
+    quiet = quiet and pcall(function() return action:isValid() end)
+end
+check("200 ticks of isValid raise nothing", quiet == true)
+check("and never provoke the engine", #ENGINE_ERRORS == 0, ENGINE_ERRORS[1])
+
+inv:Remove(actionPaper)
+check("dropping the paper invalidates the action", action:isValid() == false)
+
+print("\n[39] the coordinate readout")
 DRAWN_STRINGS = {}
 PLAYER.x, PLAYER.y, PLAYER.z = 8041, 11792, 0
 Events.OnPostUIDraw.fire()
