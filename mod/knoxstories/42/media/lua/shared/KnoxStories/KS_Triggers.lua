@@ -246,3 +246,45 @@ KS.Triggers.types.deliver_item = {
         KS.log("took " .. KS.Inventory.describeSpec(params) .. " on delivery")
     end,
 }
+
+--------------------------------------------------------------------------------
+-- examine
+--
+--   { type = "examine", item = "Base.Inhaler", requires = "diane_description" }
+--
+-- Fires once the player has looked closely at the thing. The Examine option is
+-- hidden entirely until 'requires' is satisfied, so the world gives nothing away
+-- before the player has the intel -- see KS_Examine.lua for why hidden rather
+-- than greyed out.
+--
+-- 'requires' is optional. Without it the thing is examinable as soon as the step
+-- is active, which is the ordinary case; the conditional form is the interesting
+-- one.
+--------------------------------------------------------------------------------
+
+KS.Triggers.types.examine = {
+
+    validate = function(params)
+        local ok, reason = KS.Inventory.validateSpec(params, "the trigger")
+        if not ok then
+            return false, reason
+        end
+
+        if params.requires ~= nil then
+            if type(params.requires) ~= "string" or params.requires == "" then
+                return false, "'requires' must be the id of the note the player needs first"
+            end
+            if not KS.Notes.get(params.requires) then
+                return false, "'requires' names the note '" .. params.requires
+                    .. "', but no note with that id exists"
+            end
+        end
+
+        return true
+    end,
+
+    test = function(params, player)
+        local item = KS.Inventory.findBySpec(player, params)
+        return item ~= nil and KS.Examine.isExamined(item)
+    end,
+}

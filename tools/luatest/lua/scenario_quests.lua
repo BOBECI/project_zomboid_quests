@@ -56,7 +56,7 @@ print("\n[1] boot")
 Events.OnInitGlobalModData.fire(true)
 Events.OnGameStart.fire()
 local valid, invalid = KnoxStories.Quests.ensureValidated()
-check("3 valid quests registered", valid == 3, valid)
+check("4 valid quests registered", valid == 4, valid)
 check("4 broken quests skipped", invalid == 4, invalid)
 check("a step giving an unknown note is rejected",
     KnoxStories.Quests.get("bad_gives") == nil)

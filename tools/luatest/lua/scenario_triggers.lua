@@ -209,9 +209,3 @@ KS.DEBUG = false
 check("reset does nothing with DEBUG off", KS.State.debugResetQuest("dummy_a") == false)
 KS.DEBUG = true
 
-print("")
-if FAILURES == 0 then
-    print("ALL CHECKS PASSED")
-else
-    print(FAILURES .. " CHECK(S) FAILED")
-end

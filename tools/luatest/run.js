@@ -26,6 +26,7 @@ const SCENARIOS = [
   { file: 'scenario_newquest.lua', banner: 'RELOAD AGAIN, WITH A NEW QUEST ADDED', reload: true },
   { file: 'scenario_notes.lua', banner: 'RELOAD AGAIN: NOTES AND THE COPY RECIPE', reload: true },
   { file: 'scenario_triggers.lua', banner: 'RELOAD AGAIN: THE FOUR TRIGGER TYPES', reload: true },
+  { file: 'scenario_phase4.lua', banner: 'RELOAD AGAIN: DRESSING, RECORDER, EXAMINE', reload: true },
 ];
 
 function findLuaFiles(dir) {
@@ -91,9 +92,11 @@ const RELOAD = `
     ISInventoryPaneContextMenu.onWriteSomething =
         ISInventoryPaneContextMenu._vanillaOnWriteSomething
     ISInventoryPaneContextMenu.opened = {}
-    for _, name in ipairs({ "OnGameStart", "OnPlayerUpdate", "OnInitGlobalModData",
-                            "OnFillInventoryObjectContextMenu", "OnFillWorldObjectContextMenu" }) do
-        Events[name].handlers = {}
+    -- Every event, not a hand-kept list: a handler left over from a previous
+    -- load still closes over that load's KnoxStories table, so a stale one does
+    -- not just double up, it reads the wrong DEBUG flag and the wrong state.
+    for _, e in pairs(Events) do
+        if type(e) == "table" and e.handlers then e.handlers = {} end
     end
 `;
 

@@ -134,3 +134,34 @@ table.insert(KnoxStories.QuestDefs, {
         },
     },
 })
+
+--------------------------------------------------------------------------------
+-- Dummy D -- the conditional examine, in one step so the condition is the only
+-- thing gating it.
+--
+-- Deliberately NOT "step 1 get the note, step 2 examine the thing". That would
+-- prove nothing: the option would be hidden simply because the step was not
+-- active yet. With a single step, active from the start, the only reason Examine
+-- does not appear is that the player is not carrying the note -- which is the
+-- behaviour worth testing.
+--
+-- Base.PillsBeta rather than an inhaler: B42 has an asthmatic trait but no
+-- inhaler item. The trigger does not care what the object is.
+--------------------------------------------------------------------------------
+
+table.insert(KnoxStories.QuestDefs, {
+    id = "dummy_d",
+    name = "Dummy D (examine, gated on carrying a note)",
+    firstStep = "examine_the_pills",
+    steps = {
+        {
+            id = "examine_the_pills",
+            trigger = {
+                type = "examine",
+                item = "Base.PillsBeta",
+                requires = "dummy_envelope",
+            },
+            unlocks = nil,
+        },
+    },
+})
